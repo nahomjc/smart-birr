@@ -3,13 +3,19 @@ import postgres from "postgres";
 import * as schema from "./schema";
 import * as relations from "./relations";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = (
+  process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL
+)?.trim();
 
 function createDb() {
   if (!connectionString) {
     return null;
   }
-  const client = postgres(connectionString, { prepare: false, max: 10 });
+  const client = postgres(connectionString, {
+    prepare: false,
+    max: 10,
+    ssl: "require",
+  });
   return drizzle(client, { schema: { ...schema, ...relations } });
 }
 
