@@ -32,11 +32,11 @@ export default function Home() {
           Smart Birr 🪙
         </span>
         <div className="flex gap-3">
-          <Link href="/setup">
-            <Button variant="secondary">Get started</Button>
+          <Link href="/login">
+            <Button variant="secondary">Sign in</Button>
           </Link>
-          <Link href="/dashboard">
-            <Button>Dashboard</Button>
+          <Link href="/login">
+            <Button>Get started</Button>
           </Link>
         </div>
       </header>
@@ -55,7 +55,7 @@ export default function Home() {
             savings, and get practical counsel — on the web or Telegram.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Link href="/setup">
+            <Link href="/login">
               <Button className="px-8 py-3 text-base">Start free</Button>
             </Link>
             <Link href="/dashboard/chat">

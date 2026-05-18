@@ -1,19 +1,20 @@
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import { getOrCreateUserFromAuth } from "@/lib/users/service";
 
-export const SESSION_COOKIE = "sb_user";
-
-export async function getSessionUserId(): Promise<string | null> {
-  const store = await cookies();
-  return store.get(SESSION_COOKIE)?.value ?? null;
+export async function getSupabaseUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return user;
 }
 
-export async function setSessionUserId(userId: string) {
-  const store = await cookies();
-  store.set(SESSION_COOKIE, userId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+/** App `users.id` for the logged-in Supabase user */
+export async function getSessionUserId(): Promise<string | null> {
+  const authUser = await getSupabaseUser();
+  if (!authUser) return null;
+  const appUser = await getOrCreateUserFromAuth(authUser);
+  return appUser.id;
 }

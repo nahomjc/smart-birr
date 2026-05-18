@@ -2,13 +2,21 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { createSession, type SessionActionState } from "@/app/actions/session";
+import {
+  completeOnboarding,
+  type ProfileActionState,
+} from "@/app/actions/profile";
 
-export function SetupForm() {
+type Props = {
+  defaultName?: string;
+  defaultIncome?: string;
+};
+
+export function ProfileForm({ defaultName = "", defaultIncome = "" }: Props) {
   const [state, action, pending] = useActionState<
-    SessionActionState,
+    ProfileActionState,
     FormData
-  >(createSession, null);
+  >(completeOnboarding, null);
 
   return (
     <form action={action} className="mx-auto max-w-md space-y-4">
@@ -17,8 +25,8 @@ export function SetupForm() {
         <input
           name="name"
           required
+          defaultValue={defaultName}
           className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 dark:border-zinc-700 dark:bg-zinc-900"
-          placeholder="Abebe"
         />
       </label>
       <label className="block text-sm">
@@ -29,13 +37,14 @@ export function SetupForm() {
           name="income"
           type="number"
           min="0"
+          defaultValue={defaultIncome}
           className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 dark:border-zinc-700 dark:bg-zinc-900"
           placeholder="20000"
         />
       </label>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Setting up…" : "Start using Smart Birr"}
+        {pending ? "Saving…" : "Continue to dashboard"}
       </Button>
     </form>
   );

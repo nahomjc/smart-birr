@@ -9,7 +9,10 @@ import {
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
+  /** Supabase Auth user id (auth.users.id) */
+  authUserId: uuid("auth_user_id").unique(),
   telegramId: bigint("telegram_id", { mode: "number" }).unique(),
+  email: text("email"),
   name: text("name"),
   income: numeric("income", { precision: 12, scale: 2 }),
   currency: text("currency").default("ETB").notNull(),

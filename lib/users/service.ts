@@ -1,4 +1,5 @@
 import { eq, desc, and, gte } from "drizzle-orm";
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import {
   requireDb,
   users,
@@ -30,17 +31,49 @@ export async function getOrCreateTelegramUser(
   return created;
 }
 
-export async function getOrCreateWebUser(name: string, income?: number): Promise<User> {
+export async function getOrCreateUserFromAuth(
+  authUser: SupabaseAuthUser,
+): Promise<User> {
   const db = requireDb();
+  const existing = await db.query.users.findFirst({
+    where: eq(users.authUserId, authUser.id),
+  });
+  if (existing) return existing;
+
+  const meta = authUser.user_metadata ?? {};
+  const name =
+    (meta.full_name as string) ||
+    (meta.name as string) ||
+    authUser.email?.split("@")[0] ||
+    "User";
+
   const [created] = await db
     .insert(users)
     .values({
+      authUserId: authUser.id,
+      email: authUser.email ?? null,
       name,
-      income: income != null ? String(income) : null,
       currency: "ETB",
     })
     .returning();
   return created;
+}
+
+export async function updateUserProfile(
+  userId: string,
+  data: { name?: string; income?: number },
+) {
+  const db = requireDb();
+  const patch: Partial<{ name: string; income: string }> = {};
+  if (data.name) patch.name = data.name;
+  if (data.income != null && data.income > 0) {
+    patch.income = String(data.income);
+  }
+  if (Object.keys(patch).length === 0) return;
+  await db.update(users).set(patch).where(eq(users.id, userId));
+  if (data.income && data.income > 0) {
+    await upsertBudgetFromIncome(userId, data.income);
+  }
 }
 
 export async function getUserById(id: string): Promise<User | undefined> {
