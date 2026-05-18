@@ -98,3 +98,27 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export async function signInWithGoogle() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${getOrigin()}/auth/callback`,
+    },
+  });
+  if (error) return redirect(`/login?error=oauth`);
+  if (data.url) redirect(data.url);
+}
+
+export async function signInWithGitHub() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "github",
+    options: {
+      redirectTo: `${getOrigin()}/auth/callback`,
+    },
+  });
+  if (error) return redirect(`/login?error=oauth`);
+  if (data.url) redirect(data.url);
+}

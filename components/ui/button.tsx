@@ -6,10 +6,11 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variants = {
   primary:
-    "bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50",
+    "bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 shadow-lg shadow-emerald-900/30",
   secondary:
-    "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700",
-  ghost: "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800",
+    "border border-emerald-800/50 bg-[#0f1714] text-zinc-100 hover:border-emerald-600/40 hover:bg-emerald-950/40",
+  ghost:
+    "text-zinc-400 hover:bg-emerald-950/40 hover:text-emerald-300",
 };
 
 export function Button({

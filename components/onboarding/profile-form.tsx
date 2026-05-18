@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { theme } from "@/lib/theme";
 import {
   completeOnboarding,
   type ProfileActionState,
@@ -21,16 +22,16 @@ export function ProfileForm({ defaultName = "", defaultIncome = "" }: Props) {
   return (
     <form action={action} className="mx-auto max-w-md space-y-4">
       <label className="block text-sm">
-        <span className="mb-1 block text-zinc-500">Your name</span>
+        <span className={`mb-1 block ${theme.subtext}`}>Your name</span>
         <input
           name="name"
           required
           defaultValue={defaultName}
-          className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 dark:border-zinc-700 dark:bg-zinc-900"
+          className={theme.input}
         />
       </label>
       <label className="block text-sm">
-        <span className="mb-1 block text-zinc-500">
+        <span className={`mb-1 block ${theme.subtext}`}>
           Monthly income (ETB, optional)
         </span>
         <input
@@ -38,11 +39,11 @@ export function ProfileForm({ defaultName = "", defaultIncome = "" }: Props) {
           type="number"
           min="0"
           defaultValue={defaultIncome}
-          className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 dark:border-zinc-700 dark:bg-zinc-900"
+          className={theme.input}
           placeholder="20000"
         />
       </label>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Saving…" : "Continue to dashboard"}
       </Button>

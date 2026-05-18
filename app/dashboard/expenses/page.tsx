@@ -3,6 +3,7 @@ import { ExpenseForm } from "@/components/expenses/expense-form";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { getSessionUserId } from "@/lib/auth/session";
 import { getMonthlyExpenses } from "@/lib/users/service";
+import { theme } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -21,17 +22,17 @@ export default async function ExpensesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Expenses</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h1 className={`text-2xl ${theme.heading}`}>Expenses</h1>
+        <p className={`mt-1 text-sm ${theme.subtext}`}>
           Track spending by category this month.
         </p>
       </div>
       <Card>
-        <h2 className="mb-4 font-medium">Add expense</h2>
+        <h2 className="mb-4 font-medium text-zinc-100">Add expense</h2>
         <ExpenseForm />
       </Card>
       <Card>
-        <h2 className="mb-4 font-medium">This month</h2>
+        <h2 className="mb-4 font-medium text-zinc-100">This month</h2>
         <ExpenseList expenses={expenses} />
       </Card>
     </div>

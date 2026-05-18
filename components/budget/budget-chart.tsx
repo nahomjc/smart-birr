@@ -30,9 +30,15 @@ export function BudgetChart({
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} />
+          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#a1a1aa" }} />
+          <YAxis tick={{ fontSize: 11, fill: "#a1a1aa" }} />
           <Tooltip
+            contentStyle={{
+              background: "#0f1714",
+              border: "1px solid rgba(52,211,153,0.2)",
+              borderRadius: "12px",
+              color: "#f4f4f5",
+            }}
             formatter={(v) => [`${Number(v).toLocaleString()} ETB`, "Limit"]}
           />
           <Bar dataKey="value" radius={[6, 6, 0, 0]}>

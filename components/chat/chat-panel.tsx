@@ -3,6 +3,7 @@
 import { useState, useRef, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { sendChatMessage } from "@/app/actions/chat";
+import { theme } from "@/lib/theme";
 
 type Message = {
   role: "user" | "assistant";
@@ -15,7 +16,7 @@ export function ChatPanel() {
     {
       role: "assistant",
       content:
-        'Hi! I\'m Smart Birr, your AI financial counselor. Ask about budgeting, saving, or log spending — e.g. "Spent 500 birr on lunch".',
+        "Hi! I'm Smart Birr, your AI financial counselor. Ask about budgeting, saving, or log spending — e.g. \"Spent 500 birr on lunch\".",
     },
   ]);
   const [input, setInput] = useState("");
@@ -63,7 +64,7 @@ export function ChatPanel() {
   }
 
   return (
-    <div className="flex h-[min(70vh,600px)] flex-col rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="flex h-[min(70vh,600px)] flex-col overflow-hidden rounded-2xl border border-emerald-900/30 bg-[#0f1714] shadow-lg shadow-black/30">
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.map((msg, i) => (
           <div
@@ -74,7 +75,7 @@ export function ChatPanel() {
               className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === "user"
                   ? "bg-emerald-600 text-white"
-                  : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                  : "border border-emerald-900/30 bg-[#141f1b] text-zinc-200"
               }`}
             >
               <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -89,7 +90,7 @@ export function ChatPanel() {
         ))}
         <div ref={bottomRef} />
       </div>
-      <div className="flex gap-2 border-t border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="flex gap-2 border-t border-emerald-900/30 bg-[#0a1210] p-4">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -100,7 +101,7 @@ export function ChatPanel() {
             }
           }}
           placeholder="Ask about budgeting or log an expense..."
-          className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900"
+          className={`flex-1 rounded-xl ${theme.input}`}
           disabled={isPending}
         />
         <Button onClick={send} disabled={isPending}>
