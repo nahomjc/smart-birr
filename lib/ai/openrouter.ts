@@ -1,6 +1,11 @@
 import OpenAI from "openai";
 import type { ChatCompletion } from "openai/resources/chat/completions";
 import {
+  COUNSELOR_PROMPT_TIERS,
+  truncateContext,
+  trimHistory,
+} from "./prompt-budget";
+import {
   FINANCIAL_COUNSELOR_SYSTEM,
   TELEGRAM_REPLY_FORMAT,
 } from "./prompts";
@@ -73,8 +78,16 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-/** OpenRouter 402: requested max_tokens exceeds remaining credit budget. */
+/** OpenRouter 402: input context too large for account prompt token cap. */
+export function isOpenRouterPromptTooLargeError(error: unknown): boolean {
+  return extractErrorMessage(error)
+    .toLowerCase()
+    .includes("prompt tokens limit exceeded");
+}
+
+/** OpenRouter 402: billing / output token budget (not fixable by trimming input). */
 export function isOpenRouterCreditsError(error: unknown): boolean {
+  if (isOpenRouterPromptTooLargeError(error)) return false;
   if (getHttpStatus(error) === 402) return true;
   return extractErrorMessage(error).includes("requires more credits");
 }
@@ -190,10 +203,28 @@ export async function financialCounselorReply(
   history: ChatMessage[] = [],
   options?: { channel?: "web" | "telegram"; maxTokens?: number },
 ): Promise<string> {
-  const channel = options?.channel;
-  return chatCompletion(buildCounselorMessages(userMessage, contextBlock, history, options), {
-    maxTokens: options?.maxTokens ?? maxTokensForChannel(channel),
-  });
+  const channel = options?.channel ?? "web";
+  const tiers = COUNSELOR_PROMPT_TIERS[channel];
+  const maxTokens = options?.maxTokens ?? maxTokensForChannel(channel);
+
+  let lastError: unknown;
+
+  for (const tier of tiers) {
+    const messages = buildCounselorMessages(
+      userMessage,
+      truncateContext(contextBlock, tier.contextMaxChars),
+      trimHistory(history, tier.historyTurns, tier.maxCharsPerHistoryMessage),
+      options,
+    );
+    try {
+      return await chatCompletion(messages, { maxTokens });
+    } catch (error) {
+      lastError = error;
+      if (!isOpenRouterPromptTooLargeError(error)) throw error;
+    }
+  }
+
+  throw lastError;
 }
 
 /** Streams counselor tokens for web chat (OpenRouter SSE). */

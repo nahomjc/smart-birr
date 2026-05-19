@@ -278,6 +278,7 @@ Set `CRON_SECRET` in Vercel; Vercel injects it automatically for cron invocation
 
 - Check `OPENROUTER_API_KEY` and Vercel logs for OpenRouter errors.
 - **402 / insufficient credits**: add credits at [OpenRouter settings](https://openrouter.ai/settings/credits), or set `OPENROUTER_MAX_TOKENS_TELEGRAM=400` (or lower) in Vercel env and redeploy. Guided expense logging (📝 Log expense) does not use AI.
+- **402 / prompt tokens limit exceeded**: your OpenRouter tier caps total input size (e.g. 2200 tokens). The bot auto-trims context on retry; adding credits raises the cap. Use 📝 Log expense when AI is unavailable.
 - **429 / rate limit**: set `OPENROUTER_MODEL=deepseek/deepseek-chat` in Vercel (not Gemini), wait a minute, or add your own provider key at [OpenRouter integrations](https://openrouter.ai/settings/integrations).
 
 ### Cron messages never arrive

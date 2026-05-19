@@ -1,8 +1,13 @@
 import { extractExpenseFromMessage } from "@/lib/ai/extract-expense";
-import { getRecentConversationMessages } from "@/lib/ai/conversation-memory";
+import {
+  getRecentConversationMessages,
+  MEMORY_TURNS_TELEGRAM,
+  MEMORY_TURNS_WEB,
+} from "@/lib/ai/conversation-memory";
 import {
   financialCounselorReply,
   isOpenRouterCreditsError,
+  isOpenRouterPromptTooLargeError,
   isOpenRouterRateLimitError,
   type ChatMessage,
 } from "@/lib/ai/openrouter";
@@ -90,7 +95,9 @@ export async function prepareFinancialMessage(
 
   const [context, history] = await Promise.all([
     getUserContext(userId),
-    getRecentConversationMessages(userId),
+    getRecentConversationMessages(userId, {
+      maxTurns: channel === "telegram" ? MEMORY_TURNS_TELEGRAM : MEMORY_TURNS_WEB,
+    }),
   ]);
 
   const userPrompt =
@@ -119,7 +126,10 @@ function aiUnavailableReply(
   error?: unknown,
 ): string {
   let hint = "";
-  if (error && isOpenRouterCreditsError(error)) {
+  if (error && isOpenRouterPromptTooLargeError(error)) {
+    hint =
+      " Your account prompt limit is low — add OpenRouter credits or use 📝 Log expense (no AI).";
+  } else if (error && isOpenRouterCreditsError(error)) {
     hint = " Add credits at openrouter.ai/settings/credits.";
   } else if (error && isOpenRouterRateLimitError(error)) {
     hint = " The AI provider is busy — wait a minute and try again, or use 📝 Log expense.";
