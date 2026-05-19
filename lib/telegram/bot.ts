@@ -11,9 +11,43 @@ export type TelegramUpdate = {
 };
 
 function token() {
-  const t = process.env.TELEGRAM_BOT_TOKEN;
+  const t = process.env.TELEGRAM_BOT_TOKEN?.trim();
   if (!t) throw new Error("TELEGRAM_BOT_TOKEN is not configured.");
   return t;
+}
+
+/** Telegram clears typing after ~5s — refresh while a slow handler runs. */
+const TYPING_REFRESH_MS = 4_000;
+
+export async function sendTelegramTyping(chatId: number): Promise<void> {
+  try {
+    const res = await fetch(`${TELEGRAM_API}${token()}/sendChatAction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, action: "typing" }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Telegram sendChatAction failed:", err);
+    }
+  } catch (error) {
+    console.error("Telegram sendChatAction error:", error);
+  }
+}
+
+export async function withTelegramTyping<T>(
+  chatId: number,
+  fn: () => Promise<T>,
+): Promise<T> {
+  await sendTelegramTyping(chatId);
+  const interval = setInterval(() => {
+    void sendTelegramTyping(chatId);
+  }, TYPING_REFRESH_MS);
+  try {
+    return await fn();
+  } finally {
+    clearInterval(interval);
+  }
 }
 
 export async function sendTelegramMessage(

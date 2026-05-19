@@ -11,7 +11,12 @@ import {
 } from "../users/service";
 import { getBudgetAllocation, getCurrentBudget } from "../finance/budget-service";
 import { processFinancialMessage } from "../services/financial-message";
-import { HELP_TEXT, sendTelegramMessage, START_TEXT } from "./bot";
+import {
+  HELP_TEXT,
+  sendTelegramMessage,
+  START_TEXT,
+  withTelegramTyping,
+} from "./bot";
 
 export async function handleTelegramMessage(
   chatId: number,
@@ -32,15 +37,17 @@ export async function handleTelegramMessage(
     return;
   }
   if (lower === "/budget") {
-    await handleBudgetCommand(chatId, user.id, user.income);
+    await withTelegramTyping(chatId, () =>
+      handleBudgetCommand(chatId, user.id, user.income),
+    );
     return;
   }
   if (lower === "/savings") {
-    await handleSavingsCommand(chatId, user.id);
+    await withTelegramTyping(chatId, () => handleSavingsCommand(chatId, user.id));
     return;
   }
   if (lower === "/report") {
-    await handleReportCommand(chatId, user.id);
+    await withTelegramTyping(chatId, () => handleReportCommand(chatId, user.id));
     return;
   }
   if (lower === "/expense") {
@@ -66,9 +73,9 @@ In a private chat with this bot, Chat ID and User ID are usually the same.`,
     return;
   }
 
-  const { reply } = await processFinancialMessage(user.id, trimmed, {
-    channel: "telegram",
-  });
+  const { reply } = await withTelegramTyping(chatId, () =>
+    processFinancialMessage(user.id, trimmed, { channel: "telegram" }),
+  );
 
   await sendTelegramMessage(chatId, reply);
 }
