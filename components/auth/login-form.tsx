@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn, type AuthActionState } from "@/app/actions/auth";
 import { authInput, authLabel, authSubmit } from "./auth-styles";
@@ -43,12 +44,12 @@ export function LoginForm() {
           />
         </label>
         <div className="flex justify-end">
-          <a
-            href="mailto:support@smartbirr.app"
+          <Link
+            href="/forgot-password"
             className="text-sm text-white/80 underline-offset-2 hover:text-white hover:underline"
           >
             Forgot Password
-          </a>
+          </Link>
         </div>
         {state?.error && (
           <p className="rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-100">

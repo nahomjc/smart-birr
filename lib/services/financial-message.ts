@@ -1,6 +1,9 @@
 import { extractExpenseFromMessage } from "@/lib/ai/extract-expense";
 import { getRecentConversationMessages } from "@/lib/ai/conversation-memory";
-import { financialCounselorReply } from "@/lib/ai/openrouter";
+import {
+  financialCounselorReply,
+  type ChatMessage,
+} from "@/lib/ai/openrouter";
 import {
   formatExpenseLoggedTelegram,
   getBudgetInsightSnapshot,
@@ -27,11 +30,20 @@ export type FinancialMessageResult = {
   telegramExpenseBlock: string | null;
 };
 
-export async function processFinancialMessage(
+export type FinancialMessagePrep = {
+  channel: "web" | "telegram";
+  userPrompt: string;
+  context: string;
+  history: ChatMessage[];
+  expenseLogged: ExpenseLogged | null;
+  telegramExpenseBlock: string | null;
+};
+
+export async function prepareFinancialMessage(
   userId: string,
   message: string,
   options?: { channel?: "web" | "telegram" },
-): Promise<FinancialMessageResult> {
+): Promise<FinancialMessagePrep> {
   const channel = options?.channel ?? "web";
 
   const incomeMatch = message.match(
@@ -84,26 +96,52 @@ export async function processFinancialMessage(
       ? `${message}\n\n[System: Expense was just saved — ${expenseLogged.amount} ETB ${expenseLogged.category}. Give brief coaching only; receipt details are already shown.]`
       : message;
 
-  const aiReply = await financialCounselorReply(
+  return {
+    channel,
     userPrompt,
-    context || undefined,
+    context: context || "",
     history,
-    { channel },
+    expenseLogged,
+    telegramExpenseBlock,
+  };
+}
+
+export function webExpenseLoggedSuffix(expenseLogged: ExpenseLogged | null): string {
+  if (!expenseLogged) return "";
+  return `\n\n✅ Logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}`;
+}
+
+export async function processFinancialMessage(
+  userId: string,
+  message: string,
+  options?: { channel?: "web" | "telegram" },
+): Promise<FinancialMessageResult> {
+  const prep = await prepareFinancialMessage(userId, message, options);
+
+  const aiReply = await financialCounselorReply(
+    prep.userPrompt,
+    prep.context || undefined,
+    prep.history,
+    { channel: prep.channel },
   );
 
   let reply = aiReply;
-  if (channel === "web" && expenseLogged) {
-    reply += `\n\n✅ Logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}`;
+  if (prep.channel === "web") {
+    reply += webExpenseLoggedSuffix(prep.expenseLogged);
   }
 
-  if (channel === "telegram") {
+  if (prep.channel === "telegram") {
     const coaching = formatTelegramOutboundMessage(aiReply);
-    reply = telegramExpenseBlock
-      ? `${telegramExpenseBlock}\n\n${coaching}`
+    reply = prep.telegramExpenseBlock
+      ? `${prep.telegramExpenseBlock}\n\n${coaching}`
       : coaching;
   }
 
   await saveConversation(userId, message, reply);
 
-  return { reply, expenseLogged, telegramExpenseBlock };
+  return {
+    reply,
+    expenseLogged: prep.expenseLogged,
+    telegramExpenseBlock: prep.telegramExpenseBlock,
+  };
 }

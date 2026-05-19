@@ -49,12 +49,12 @@ export async function chatCompletion(
   return completion.choices[0]?.message?.content?.trim() ?? "";
 }
 
-export async function financialCounselorReply(
+function buildCounselorMessages(
   userMessage: string,
   contextBlock?: string,
   history: ChatMessage[] = [],
   options?: { channel?: "web" | "telegram" },
-): Promise<string> {
+): ChatMessage[] {
   let system = FINANCIAL_COUNSELOR_SYSTEM;
   if (options?.channel === "telegram") {
     system += `\n\n${TELEGRAM_REPLY_FORMAT}`;
@@ -63,11 +63,47 @@ export async function financialCounselorReply(
     ? `${system}\n\n--- User financial context ---\n${contextBlock}`
     : system;
 
-  return chatCompletion([
+  return [
     { role: "system", content: systemContent },
     ...history,
     { role: "user", content: userMessage },
-  ]);
+  ];
+}
+
+export async function financialCounselorReply(
+  userMessage: string,
+  contextBlock?: string,
+  history: ChatMessage[] = [],
+  options?: { channel?: "web" | "telegram" },
+): Promise<string> {
+  return chatCompletion(
+    buildCounselorMessages(userMessage, contextBlock, history, options),
+  );
+}
+
+/** Streams counselor tokens for web chat (OpenRouter SSE). */
+export async function* streamFinancialCounselorReply(
+  userMessage: string,
+  contextBlock?: string,
+  history: ChatMessage[] = [],
+): AsyncGenerator<string> {
+  const client = getClient();
+  const stream = await client.chat.completions.create({
+    model: resolveModel(),
+    max_tokens: 800,
+    stream: true,
+    messages: buildCounselorMessages(userMessage, contextBlock, history, {
+      channel: "web",
+    }).map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  });
+
+  for await (const chunk of stream) {
+    const text = chunk.choices[0]?.delta?.content;
+    if (text) yield text;
+  }
 }
 
 export async function jsonCompletion<T>(

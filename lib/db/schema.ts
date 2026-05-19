@@ -242,6 +242,31 @@ export const planningGoalContributions = pgTable(
   ],
 );
 
+/** Email OTP codes for forgot-password (hashed). */
+export const passwordResetOtps = pgTable(
+  "password_reset_otps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    /** Supabase auth.users.id */
+    authUserId: uuid("auth_user_id").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: smallint("attempts").default(0).notNull(),
+    maxAttempts: smallint("max_attempts").default(5).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("password_reset_otps_email_created_idx").on(
+      table.email,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const notifications = pgTable(
   "notifications",
   {
@@ -271,6 +296,7 @@ export type Budget = typeof budgets.$inferSelect;
 export type BudgetLimit = typeof budgetLimits.$inferSelect;
 export type IncomeEntry = typeof incomeEntries.$inferSelect;
 export type RecurringExpense = typeof recurringExpenses.$inferSelect;
+export type PasswordResetOtp = typeof passwordResetOtps.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type PlanningGoal = typeof planningGoals.$inferSelect;
 export type PlanningGoalContribution =

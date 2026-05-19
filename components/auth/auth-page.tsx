@@ -28,9 +28,16 @@ export function AuthPage({
         <Logo className="relative z-10" />
 
         <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
+          {message && !error && (
+            <p className="mb-4 rounded-lg bg-emerald-500/30 px-3 py-2 text-center text-sm text-emerald-50">
+              {decodeURIComponent(message.replace(/\+/g, " "))}
+            </p>
+          )}
           {error && (
             <p className="mb-4 rounded-lg bg-red-500/20 px-3 py-2 text-center text-sm text-red-100">
-              {message ?? "Authentication failed. Please try again."}
+              {message
+                ? decodeURIComponent(message.replace(/\+/g, " "))
+                : "Authentication failed. Please try again."}
             </p>
           )}
 

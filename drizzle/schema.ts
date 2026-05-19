@@ -204,6 +204,20 @@ export const recurring_expenses = pgTable("recurring_expenses", {
 		}).onDelete("cascade"),
 ]);
 
+export const password_reset_otps = pgTable("password_reset_otps", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	email: text().notNull(),
+	auth_user_id: uuid().notNull(),
+	code_hash: text().notNull(),
+	attempts: smallint().default(0).notNull(),
+	max_attempts: smallint().default(5).notNull(),
+	expires_at: timestamp({ withTimezone: true, mode: 'string' }).notNull(),
+	consumed_at: timestamp({ withTimezone: true, mode: 'string' }),
+	created_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("password_reset_otps_email_created_idx").using("btree", table.email.asc().nullsLast().op("text_ops"), table.created_at.desc().nullsFirst().op("text_ops")),
+]);
+
 export const notifications = pgTable("notifications", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	user_id: uuid().notNull(),

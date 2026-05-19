@@ -1,0 +1,54 @@
+const BREVO_API = "https://api.brevo.com/v3/smtp/email";
+
+export async function sendPasswordResetOtpEmail(
+  toEmail: string,
+  otp: string,
+): Promise<void> {
+  const apiKey =
+    process.env.BREVO_API_KEY?.trim() ??
+    process.env.BREVO_SMTP_KEY?.trim();
+  const senderEmail =
+    process.env.BREVO_SENDER_EMAIL?.trim() ?? "nahomfjh@gmail.com";
+  const senderName = process.env.BREVO_SENDER_NAME?.trim() ?? "Smart Birr";
+
+  if (!apiKey) {
+    if (process.env.NODE_ENV === "development") {
+      console.info(
+        `[dev] Password reset OTP for ${toEmail}: ${otp} (set BREVO_API_KEY to send email)`,
+      );
+      return;
+    }
+    throw new Error(
+      "Email is not configured. Set BREVO_API_KEY in your environment.",
+    );
+  }
+
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f1714">
+      <h2 style="color:#059669">Reset your Smart Birr password</h2>
+      <p>Use this verification code. It expires in 10 minutes.</p>
+      <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:24px 0">${otp}</p>
+      <p style="color:#52525b;font-size:14px">If you did not request this, you can ignore this email.</p>
+    </div>
+  `;
+
+  const res = await fetch(BREVO_API, {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: toEmail }],
+      subject: `${otp} — Smart Birr password reset code`,
+      htmlContent: html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to send email (${res.status}): ${body}`);
+  }
+}

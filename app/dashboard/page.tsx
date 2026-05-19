@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
+import { DashboardMetricsCards } from "@/components/dashboard/dashboard-metrics-cards";
 import { MonthlyExportButton } from "@/components/dashboard/monthly-export-button";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { Card } from "@/components/ui/card";
@@ -105,38 +106,13 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <p className={`text-sm ${theme.subtext}`}>Spent this month</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-400">
-            {formatBirr(data.totalSpent)}
-          </p>
-        </Card>
-        <Card>
-          <p className={`text-sm ${theme.subtext}`}>Remaining</p>
-          <p className="mt-1 text-2xl font-semibold text-zinc-100">
-            {data.remaining != null ? formatBirr(data.remaining) : "—"}
-          </p>
-        </Card>
-        <Card>
-          <p className={`text-sm ${theme.subtext}`}>Savings goal</p>
-          <p className="mt-1 text-2xl font-semibold text-zinc-100">
-            {data.savingsGoal != null ? formatBirr(data.savingsGoal) : "—"}
-          </p>
-          {savingsProgress != null && (
-            <p className={`mt-1 text-xs ${theme.subtext}`}>
-              ~{savingsProgress}% of goal from remaining cash
-            </p>
-          )}
-        </Card>
-        <Card>
-          <p className={`text-sm ${theme.subtext}`}>Recurring bills</p>
-          <p className="mt-1 text-2xl font-semibold text-zinc-100">
-            {data.recurringCount}
-          </p>
-          <p className={`mt-1 text-xs ${theme.subtext}`}>active schedules</p>
-        </Card>
-      </div>
+      <DashboardMetricsCards
+        totalSpent={data.totalSpent}
+        remaining={data.remaining}
+        savingsGoal={data.savingsGoal}
+        savingsProgress={savingsProgress}
+        recurringCount={data.recurringCount}
+      />
 
       {data.warnings.length > 0 && (
         <Card className="border-amber-900/40 bg-amber-950/30">
