@@ -1,4 +1,5 @@
 import { and, eq, ne } from "drizzle-orm";
+import { mergeTelegramOnlyUserInto } from "./merge-telegram-account";
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { buildFinancialContextForUser } from "../ai/build-financial-context";
 import {
@@ -92,10 +93,16 @@ export async function unlinkTelegramId(userId: string) {
     .where(eq(users.id, userId));
 }
 
+export type LinkTelegramResult = {
+  user: User;
+  /** True when a bot-only profile was merged into this web account */
+  mergedBotAccount: boolean;
+};
+
 export async function linkTelegramId(
   userId: string,
   telegramId: number,
-): Promise<User> {
+): Promise<LinkTelegramResult> {
   if (!Number.isInteger(telegramId) || telegramId <= 0) {
     throw new Error("Enter a valid Telegram user ID from /chatid");
   }
@@ -107,10 +114,16 @@ export async function linkTelegramId(
       ne(users.id, userId),
     ),
   });
+
+  let mergedBotAccount = false;
   if (taken) {
-    throw new Error(
-      "This Telegram ID is already linked to another account. Use the same Telegram account you used with the bot, or message /start in the bot first.",
-    );
+    if (taken.authUserId) {
+      throw new Error(
+        "This Telegram ID is linked to a different web login. Sign in with that account, or use another Telegram account.",
+      );
+    }
+    await mergeTelegramOnlyUserInto(taken.id, userId);
+    mergedBotAccount = true;
   }
 
   const [updated] = await db
@@ -119,7 +132,7 @@ export async function linkTelegramId(
     .where(eq(users.id, userId))
     .returning();
   if (!updated) throw new Error("User not found");
-  return updated;
+  return { user: updated, mergedBotAccount };
 }
 
 export async function updateUserProfile(

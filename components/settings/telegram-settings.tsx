@@ -34,7 +34,9 @@ export function TelegramSettings({ profile }: Props) {
         Link your Telegram account for bot commands, nightly summaries, and
         budget alerts. In Telegram, message the bot{" "}
         <code className="text-emerald-400/90">/chatid</code> and copy your{" "}
-        <strong className="text-zinc-300">User ID</strong> here.
+        <strong className="text-zinc-300">User ID</strong> here. If you already
+        used the bot before signing up on the web, linking will merge that bot
+        history into this account.
       </p>
 
       {linkedId ? (
@@ -77,7 +79,11 @@ export function TelegramSettings({ profile }: Props) {
         <p className="mt-2 text-sm text-red-400">{saveState.error}</p>
       )}
       {saveState?.success && (
-        <p className="mt-2 text-sm text-emerald-400">Telegram ID saved.</p>
+        <p className="mt-2 text-sm text-emerald-400">
+          {saveState.mergedBotAccount
+            ? "Telegram linked. Expenses and chats from the bot were merged into this account."
+            : "Telegram ID saved."}
+        </p>
       )}
 
       {linkedId && (

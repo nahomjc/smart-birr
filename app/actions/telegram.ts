@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { requireUserId } from "@/lib/auth/require-user";
 import { linkTelegramId, unlinkTelegramId } from "@/lib/users/service";
 
-export type TelegramLinkState = { error?: string; success?: boolean } | null;
+export type TelegramLinkState = {
+  error?: string;
+  success?: boolean;
+  mergedBotAccount?: boolean;
+} | null;
 
 export async function saveTelegramId(
   _prev: TelegramLinkState,
@@ -22,10 +26,10 @@ export async function saveTelegramId(
 
   try {
     const userId = await requireUserId();
-    await linkTelegramId(userId, telegramId);
+    const { mergedBotAccount } = await linkTelegramId(userId, telegramId);
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard");
-    return { success: true };
+    return { success: true, mergedBotAccount };
   } catch (e) {
     return {
       error: e instanceof Error ? e.message : "Failed to link Telegram",
