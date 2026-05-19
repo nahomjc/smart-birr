@@ -3,6 +3,7 @@ import { getRecentConversationMessages } from "@/lib/ai/conversation-memory";
 import {
   financialCounselorReply,
   isOpenRouterCreditsError,
+  isOpenRouterRateLimitError,
   type ChatMessage,
 } from "@/lib/ai/openrouter";
 import {
@@ -117,22 +118,24 @@ function aiUnavailableReply(
   expenseLogged: ExpenseLogged | null,
   error?: unknown,
 ): string {
-  const creditsHint =
-    error && isOpenRouterCreditsError(error)
-      ? " Add credits at openrouter.ai/settings/credits."
-      : "";
+  let hint = "";
+  if (error && isOpenRouterCreditsError(error)) {
+    hint = " Add credits at openrouter.ai/settings/credits.";
+  } else if (error && isOpenRouterRateLimitError(error)) {
+    hint = " The AI provider is busy — wait a minute and try again, or use 📝 Log expense.";
+  }
 
   if (channel === "telegram") {
     if (expenseLogged) {
-      return `⚠️ AI coaching is temporarily unavailable.${creditsHint}\n\nYour expense was still saved. Use 📊 Budget or 📈 Report for details.`;
+      return `⚠️ AI coaching is temporarily unavailable.${hint}\n\nYour expense was still saved. Use 📊 Budget or 📈 Report for details.`;
     }
-    return `⚠️ AI replies are temporarily unavailable.${creditsHint}\n\nUse 📝 Log expense to record spending, or 📈 Report for your summary.`;
+    return `⚠️ AI replies are temporarily unavailable.${hint}\n\nUse 📝 Log expense to record spending, or 📈 Report for your summary.`;
   }
 
   if (expenseLogged) {
-    return `AI coaching is temporarily unavailable.${creditsHint} Your expense was still logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}.`;
+    return `AI coaching is temporarily unavailable.${hint} Your expense was still logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}.`;
   }
-  return `AI is temporarily unavailable.${creditsHint} Try again later or use the dashboard to log expenses.`;
+  return `AI is temporarily unavailable.${hint} Try again later or use the dashboard to log expenses.`;
 }
 
 export async function processFinancialMessage(
@@ -140,57 +143,67 @@ export async function processFinancialMessage(
   message: string,
   options?: { channel?: "web" | "telegram" },
 ): Promise<FinancialMessageResult> {
-  let prep: FinancialMessagePrep;
+  const channel = options?.channel ?? "web";
+
   try {
-    prep = await prepareFinancialMessage(userId, message, options);
-  } catch (error) {
-    console.error("prepareFinancialMessage failed:", error);
-    const channel = options?.channel ?? "web";
-    const reply = aiUnavailableReply(channel, null, error);
+    let prep: FinancialMessagePrep;
+    try {
+      prep = await prepareFinancialMessage(userId, message, options);
+    } catch (error) {
+      console.error("prepareFinancialMessage failed:", error);
+      const reply = aiUnavailableReply(channel, null, error);
+      return {
+        reply,
+        expenseLogged: null,
+        telegramExpenseBlock: null,
+      };
+    }
+
+    let aiReply: string;
+    try {
+      aiReply = await financialCounselorReply(
+        prep.userPrompt,
+        prep.context || undefined,
+        prep.history,
+        { channel: prep.channel },
+      );
+      if (!aiReply.trim()) {
+        throw new Error("OpenRouter returned an empty reply");
+      }
+    } catch (error) {
+      console.error("financialCounselorReply failed:", error);
+      aiReply = aiUnavailableReply(prep.channel, prep.expenseLogged, error);
+    }
+
+    let reply = aiReply;
+    if (prep.channel === "web") {
+      reply += webExpenseLoggedSuffix(prep.expenseLogged);
+    }
+
+    if (prep.channel === "telegram") {
+      const coaching = formatTelegramOutboundMessage(aiReply);
+      reply = prep.telegramExpenseBlock
+        ? `${prep.telegramExpenseBlock}\n\n${coaching}`
+        : coaching;
+    }
+
+    try {
+      await saveConversation(userId, message, reply);
+    } catch (error) {
+      console.error("saveConversation failed:", error);
+    }
+
     return {
       reply,
+      expenseLogged: prep.expenseLogged,
+      telegramExpenseBlock: prep.telegramExpenseBlock,
+    };
+  } catch (error) {
+    console.error("processFinancialMessage failed:", error);
+    return {
+      reply: aiUnavailableReply(channel, null, error),
       expenseLogged: null,
       telegramExpenseBlock: null,
     };
   }
-
-  let aiReply: string;
-  try {
-    aiReply = await financialCounselorReply(
-      prep.userPrompt,
-      prep.context || undefined,
-      prep.history,
-      { channel: prep.channel },
-    );
-    if (!aiReply.trim()) {
-      throw new Error("OpenRouter returned an empty reply");
-    }
-  } catch (error) {
-    console.error("financialCounselorReply failed:", error);
-    aiReply = aiUnavailableReply(prep.channel, prep.expenseLogged, error);
-  }
-
-  let reply = aiReply;
-  if (prep.channel === "web") {
-    reply += webExpenseLoggedSuffix(prep.expenseLogged);
-  }
-
-  if (prep.channel === "telegram") {
-    const coaching = formatTelegramOutboundMessage(aiReply);
-    reply = prep.telegramExpenseBlock
-      ? `${prep.telegramExpenseBlock}\n\n${coaching}`
-      : coaching;
-  }
-
-  try {
-    await saveConversation(userId, message, reply);
-  } catch (error) {
-    console.error("saveConversation failed:", error);
-  }
-
-  return {
-    reply,
-    expenseLogged: prep.expenseLogged,
-    telegramExpenseBlock: prep.telegramExpenseBlock,
-  };
 }

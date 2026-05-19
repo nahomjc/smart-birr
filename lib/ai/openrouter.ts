@@ -6,6 +6,9 @@ import {
 } from "./prompts";
 
 const FALLBACK_MODEL = "deepseek/deepseek-chat";
+/** Avoid shared Gemini free-tier rate limits; override with OPENROUTER_EXTRACTION_MODEL. */
+const EXTRACTION_MODEL =
+  process.env.OPENROUTER_EXTRACTION_MODEL?.trim() || FALLBACK_MODEL;
 
 function resolveModel(override?: string): string {
   const raw = override ?? process.env.OPENROUTER_MODEL;
@@ -56,12 +59,31 @@ function extractErrorMessage(error: unknown): string {
   return String(error);
 }
 
+function getHttpStatus(error: unknown): number | null {
+  if (error && typeof error === "object" && "status" in error) {
+    const status = (error as { status: unknown }).status;
+    return typeof status === "number" ? status : null;
+  }
+  return null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 /** OpenRouter 402: requested max_tokens exceeds remaining credit budget. */
 export function isOpenRouterCreditsError(error: unknown): boolean {
-  if (error && typeof error === "object" && "status" in error) {
-    return (error as { status: number }).status === 402;
-  }
+  if (getHttpStatus(error) === 402) return true;
   return extractErrorMessage(error).includes("requires more credits");
+}
+
+/** OpenRouter 429: upstream provider rate limit (common on shared Gemini). */
+export function isOpenRouterRateLimitError(error: unknown): boolean {
+  if (getHttpStatus(error) === 429) return true;
+  const msg = extractErrorMessage(error).toLowerCase();
+  return msg.includes("rate-limited") || msg.includes("rate limit");
 }
 
 function parseAffordableMaxTokens(message: string): number | null {
@@ -96,26 +118,49 @@ export async function chatCompletion(
   options?: { model?: string; maxTokens?: number },
 ): Promise<string> {
   const client = getClient();
-  const model = resolveModel(options?.model);
+  const primaryModel = resolveModel(options?.model);
+  const models =
+    primaryModel === FALLBACK_MODEL
+      ? [primaryModel]
+      : [primaryModel, FALLBACK_MODEL];
+
+  let lastError: unknown;
   const initialMax = options?.maxTokens ?? DEFAULT_MAX_TOKENS_WEB;
 
-  const run = (maxTokens: number) =>
-    client.chat.completions.create({
-      model,
-      max_tokens: maxTokens,
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    });
+  for (const model of models) {
+    let maxTokens = initialMax;
 
-  try {
-    return extractMessageContent(await run(initialMax));
-  } catch (error) {
-    const retryMax = retryMaxTokens(error, initialMax);
-    if (retryMax === null) throw error;
-    return extractMessageContent(await run(retryMax));
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const completion = await client.chat.completions.create({
+          model,
+          max_tokens: maxTokens,
+          messages: messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        });
+        return extractMessageContent(completion);
+      } catch (error) {
+        lastError = error;
+
+        const lowerMax = retryMaxTokens(error, maxTokens);
+        if (lowerMax !== null) {
+          maxTokens = lowerMax;
+          continue;
+        }
+
+        if (isOpenRouterRateLimitError(error) && attempt < 2) {
+          await sleep(600 * (attempt + 1));
+          continue;
+        }
+
+        break;
+      }
+    }
   }
+
+  throw lastError;
 }
 
 function buildCounselorMessages(
@@ -181,20 +226,21 @@ export async function jsonCompletion<T>(
   userMessage: string,
   options?: { model?: string },
 ): Promise<T | null> {
-  const raw = await chatCompletion(
-    [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userMessage },
-    ],
-    {
-      model: resolveModel(options?.model ?? "google/gemini-2.0-flash-001"),
-      maxTokens: 256,
-    },
-  );
   try {
+    const raw = await chatCompletion(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+      {
+        model: options?.model ?? EXTRACTION_MODEL,
+        maxTokens: 256,
+      },
+    );
     const cleaned = raw.replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
     return JSON.parse(cleaned) as T;
-  } catch {
+  } catch (error) {
+    console.error("jsonCompletion failed:", error);
     return null;
   }
 }
