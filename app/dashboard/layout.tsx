@@ -2,7 +2,8 @@ import Link from "next/link";
 import { DashboardNav } from "@/components/layout/nav";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
-import { getSupabaseUser } from "@/lib/auth/session";
+import { loadNotificationsSnapshot } from "@/app/actions/notifications";
+import { getSessionUserId, getSupabaseUser } from "@/lib/auth/session";
 import { Logo } from "@/components/landing/logo";
 import { theme } from "@/lib/theme";
 
@@ -12,6 +13,10 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const authUser = await getSupabaseUser();
+  const userId = await getSessionUserId();
+  const notifications = userId
+    ? await loadNotificationsSnapshot(userId)
+    : { notifications: [], unreadCount: 0 };
 
   return (
     <div className="min-h-full bg-[#060d0b] text-zinc-100">
@@ -34,7 +39,7 @@ export default async function DashboardLayout({
             >
               Home
             </Link>
-            <NotificationBell />
+            <NotificationBell initial={notifications} />
             <SignOutButton />
           </div>
         </div>

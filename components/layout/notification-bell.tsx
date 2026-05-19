@@ -2,15 +2,13 @@
 
 import { Bell } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-type NotificationItem = {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  readAt: string | null;
-  createdAt: string;
-};
+import {
+  getNotifications,
+  markAllNotificationsReadAction,
+  markNotificationReadAction,
+  type NotificationItem,
+  type NotificationsSnapshot,
+} from "@/app/actions/notifications";
 
 function formatWhen(iso: string) {
   const date = new Date(iso);
@@ -24,39 +22,28 @@ function formatWhen(iso: string) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-async function fetchNotifications(): Promise<{
-  notifications: NotificationItem[];
-  unreadCount: number;
-} | null> {
-  const res = await fetch("/api/notifications");
-  if (!res.ok) return null;
-  return res.json() as Promise<{
-    notifications: NotificationItem[];
-    unreadCount: number;
-  }>;
-}
+type NotificationBellProps = {
+  initial: NotificationsSnapshot;
+};
 
-export function NotificationBell() {
+export function NotificationBell({ initial }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [items, setItems] = useState<NotificationItem[]>(initial.notifications);
+  const [unreadCount, setUnreadCount] = useState(initial.unreadCount);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const applyNotifications = useCallback(
-    (data: { notifications: NotificationItem[]; unreadCount: number }) => {
-      setItems(data.notifications);
-      setUnreadCount(data.unreadCount);
-    },
-    [],
-  );
+  const applyNotifications = useCallback((data: NotificationsSnapshot) => {
+    setItems(data.notifications);
+    setUnreadCount(data.unreadCount);
+  }, []);
 
   const refresh = useCallback(
     async (withLoading = false) => {
       if (withLoading) setLoading(true);
       try {
-        const data = await fetchNotifications();
-        if (data) applyNotifications(data);
+        const data = await getNotifications();
+        applyNotifications(data);
       } finally {
         if (withLoading) setLoading(false);
       }
@@ -67,13 +54,9 @@ export function NotificationBell() {
   useEffect(() => {
     let cancelled = false;
 
-    void fetchNotifications().then((data) => {
-      if (!cancelled && data) applyNotifications(data);
-    });
-
     const interval = setInterval(() => {
-      void fetchNotifications().then((data) => {
-        if (!cancelled && data) applyNotifications(data);
+      void getNotifications().then((data) => {
+        if (!cancelled) applyNotifications(data);
       });
     }, 60_000);
 
@@ -98,23 +81,13 @@ export function NotificationBell() {
   }, [open]);
 
   async function markRead(id: string) {
-    const res = await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (!res.ok) return;
-    await refresh();
+    const data = await markNotificationReadAction(id);
+    if (data) applyNotifications(data);
   }
 
   async function markAllRead() {
-    const res = await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markAllRead: true }),
-    });
-    if (!res.ok) return;
-    await refresh();
+    const data = await markAllNotificationsReadAction();
+    applyNotifications(data);
   }
 
   return (
@@ -171,7 +144,7 @@ export function NotificationBell() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!n.readAt) markRead(n.id);
+                      if (!n.readAt) void markRead(n.id);
                     }}
                     className={`w-full border-b border-emerald-900/15 px-4 py-3 text-left transition hover:bg-emerald-950/30 ${
                       n.readAt ? "opacity-70" : ""
