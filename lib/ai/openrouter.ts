@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { ChatCompletion } from "openai/resources/chat/completions";
 import {
   FINANCIAL_COUNSELOR_SYSTEM,
   TELEGRAM_REPLY_FORMAT,
@@ -80,6 +81,16 @@ function retryMaxTokens(error: unknown, requested: number): number | null {
   return halved >= 64 && halved < requested ? halved : null;
 }
 
+function extractMessageContent(completion: ChatCompletion): string {
+  const content = completion.choices?.[0]?.message?.content?.trim();
+  if (content) return content;
+
+  const finish = completion.choices?.[0]?.finish_reason;
+  throw new Error(
+    `OpenRouter returned no message content${finish ? ` (finish_reason: ${finish})` : ""}`,
+  );
+}
+
 export async function chatCompletion(
   messages: ChatMessage[],
   options?: { model?: string; maxTokens?: number },
@@ -99,13 +110,11 @@ export async function chatCompletion(
     });
 
   try {
-    const completion = await run(initialMax);
-    return completion.choices[0]?.message?.content?.trim() ?? "";
+    return extractMessageContent(await run(initialMax));
   } catch (error) {
     const retryMax = retryMaxTokens(error, initialMax);
     if (retryMax === null) throw error;
-    const completion = await run(retryMax);
-    return completion.choices[0]?.message?.content?.trim() ?? "";
+    return extractMessageContent(await run(retryMax));
   }
 }
 
@@ -162,7 +171,7 @@ export async function* streamFinancialCounselorReply(
   });
 
   for await (const chunk of stream) {
-    const text = chunk.choices[0]?.delta?.content;
+    const text = chunk.choices?.[0]?.delta?.content;
     if (text) yield text;
   }
 }

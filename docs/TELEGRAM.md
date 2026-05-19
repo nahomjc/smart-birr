@@ -55,6 +55,8 @@ Add these to `.env` locally and to **Vercel → Settings → Environment Variabl
 | `NEXT_PUBLIC_APP_URL` | Yes for webhook setup | Public HTTPS base URL, e.g. `https://smart-birr.vercel.app` (no trailing slash) |
 | `OPENROUTER_API_KEY` | Yes for AI replies | Used when users send natural-language messages |
 | `OPENROUTER_MODEL` | No | Defaults to `deepseek/deepseek-chat` (no trailing spaces) |
+| `OPENROUTER_MAX_TOKENS_TELEGRAM` | No | Max reply tokens for Telegram (default `480`). Lower this if you see OpenRouter 402 credit errors |
+| `OPENROUTER_MAX_TOKENS` | No | Max reply tokens for web chat (default `800`) |
 | `DATABASE_URL` | Yes | Postgres; Telegram users are stored in `users.telegram_id` |
 | `CRON_SECRET` | Yes on Vercel | Protects `/api/cron/*`; Vercel sends `Authorization: Bearer <CRON_SECRET>` |
 
@@ -274,6 +276,7 @@ Set `CRON_SECRET` in Vercel; Vercel injects it automatically for cron invocation
 ### AI messages fail but commands work
 
 - Check `OPENROUTER_API_KEY` and Vercel logs for OpenRouter errors.
+- **402 / insufficient credits**: add credits at [OpenRouter settings](https://openrouter.ai/settings/credits), or set `OPENROUTER_MAX_TOKENS_TELEGRAM=400` (or lower) in Vercel env and redeploy. Guided expense logging (📝 Log expense) does not use AI.
 
 ### Cron messages never arrive
 

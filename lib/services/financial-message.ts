@@ -140,7 +140,19 @@ export async function processFinancialMessage(
   message: string,
   options?: { channel?: "web" | "telegram" },
 ): Promise<FinancialMessageResult> {
-  const prep = await prepareFinancialMessage(userId, message, options);
+  let prep: FinancialMessagePrep;
+  try {
+    prep = await prepareFinancialMessage(userId, message, options);
+  } catch (error) {
+    console.error("prepareFinancialMessage failed:", error);
+    const channel = options?.channel ?? "web";
+    const reply = aiUnavailableReply(channel, null, error);
+    return {
+      reply,
+      expenseLogged: null,
+      telegramExpenseBlock: null,
+    };
+  }
 
   let aiReply: string;
   try {
@@ -150,6 +162,9 @@ export async function processFinancialMessage(
       prep.history,
       { channel: prep.channel },
     );
+    if (!aiReply.trim()) {
+      throw new Error("OpenRouter returned an empty reply");
+    }
   } catch (error) {
     console.error("financialCounselorReply failed:", error);
     aiReply = aiUnavailableReply(prep.channel, prep.expenseLogged, error);
@@ -167,7 +182,11 @@ export async function processFinancialMessage(
       : coaching;
   }
 
-  await saveConversation(userId, message, reply);
+  try {
+    await saveConversation(userId, message, reply);
+  } catch (error) {
+    console.error("saveConversation failed:", error);
+  }
 
   return {
     reply,
