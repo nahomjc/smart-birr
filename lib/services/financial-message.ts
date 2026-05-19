@@ -2,6 +2,7 @@ import { extractExpenseFromMessage } from "@/lib/ai/extract-expense";
 import { getRecentConversationMessages } from "@/lib/ai/conversation-memory";
 import {
   financialCounselorReply,
+  isOpenRouterCreditsError,
   type ChatMessage,
 } from "@/lib/ai/openrouter";
 import {
@@ -111,6 +112,29 @@ export function webExpenseLoggedSuffix(expenseLogged: ExpenseLogged | null): str
   return `\n\n✅ Logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}`;
 }
 
+function aiUnavailableReply(
+  channel: "web" | "telegram",
+  expenseLogged: ExpenseLogged | null,
+  error?: unknown,
+): string {
+  const creditsHint =
+    error && isOpenRouterCreditsError(error)
+      ? " Add credits at openrouter.ai/settings/credits."
+      : "";
+
+  if (channel === "telegram") {
+    if (expenseLogged) {
+      return `⚠️ AI coaching is temporarily unavailable.${creditsHint}\n\nYour expense was still saved. Use 📊 Budget or 📈 Report for details.`;
+    }
+    return `⚠️ AI replies are temporarily unavailable.${creditsHint}\n\nUse 📝 Log expense to record spending, or 📈 Report for your summary.`;
+  }
+
+  if (expenseLogged) {
+    return `AI coaching is temporarily unavailable.${creditsHint} Your expense was still logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}.`;
+  }
+  return `AI is temporarily unavailable.${creditsHint} Try again later or use the dashboard to log expenses.`;
+}
+
 export async function processFinancialMessage(
   userId: string,
   message: string,
@@ -118,12 +142,18 @@ export async function processFinancialMessage(
 ): Promise<FinancialMessageResult> {
   const prep = await prepareFinancialMessage(userId, message, options);
 
-  const aiReply = await financialCounselorReply(
-    prep.userPrompt,
-    prep.context || undefined,
-    prep.history,
-    { channel: prep.channel },
-  );
+  let aiReply: string;
+  try {
+    aiReply = await financialCounselorReply(
+      prep.userPrompt,
+      prep.context || undefined,
+      prep.history,
+      { channel: prep.channel },
+    );
+  } catch (error) {
+    console.error("financialCounselorReply failed:", error);
+    aiReply = aiUnavailableReply(prep.channel, prep.expenseLogged, error);
+  }
 
   let reply = aiReply;
   if (prep.channel === "web") {

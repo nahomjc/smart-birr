@@ -165,11 +165,20 @@ export async function handleTelegramMessage(
     return;
   }
 
-  const { reply } = await withTelegramTyping(chatId, () =>
-    processFinancialMessage(user.id, trimmed, { channel: "telegram" }),
-  );
-
-  await sendTelegramMessage(chatId, reply, "HTML", MAIN_REPLY_KEYBOARD);
+  try {
+    const { reply } = await withTelegramTyping(chatId, () =>
+      processFinancialMessage(user.id, trimmed, { channel: "telegram" }),
+    );
+    await sendTelegramMessage(chatId, reply, "HTML", MAIN_REPLY_KEYBOARD);
+  } catch (error) {
+    console.error("Telegram AI message error:", error);
+    await sendTelegramMessage(
+      chatId,
+      "⚠️ Could not get an AI reply right now. Use 📝 Log expense or 📈 Report, or try again later.",
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
+    );
+  }
 }
 
 async function handleBudgetCommand(
