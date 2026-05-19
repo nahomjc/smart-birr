@@ -9,7 +9,13 @@ import { AuthPromo } from "./auth-promo";
 
 type Mode = "login" | "signup";
 
-export function AuthPage({ error }: { error?: string }) {
+export function AuthPage({
+  error,
+  message,
+}: {
+  error?: string;
+  message?: string;
+}) {
   const [mode, setMode] = useState<Mode>("login");
 
   return (
@@ -27,7 +33,7 @@ export function AuthPage({ error }: { error?: string }) {
         <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
           {error && (
             <p className="mb-4 rounded-lg bg-red-500/20 px-3 py-2 text-center text-sm text-red-100">
-              Authentication failed. Please try again.
+              {message ?? "Authentication failed. Please try again."}
             </p>
           )}
 

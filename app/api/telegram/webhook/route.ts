@@ -4,6 +4,15 @@ import { handleTelegramMessage } from "@/lib/telegram/handler";
 
 export const dynamic = "force-dynamic";
 
+/** Browsers use GET — webhook only accepts POST from Telegram. */
+export function GET() {
+  return NextResponse.json({
+    ok: true,
+    message:
+      "Smart Birr Telegram webhook is live. Telegram sends POST here; open /api/telegram/setup to register.",
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();

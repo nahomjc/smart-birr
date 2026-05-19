@@ -41,7 +41,7 @@ export async function signUp(
     password,
     options: {
       data: { full_name: name || undefined },
-      emailRedirectTo: `${getOrigin()}/auth/callback`,
+      emailRedirectTo: `${getOrigin()}/auth/callback?next=/dashboard`,
     },
   });
 
@@ -62,7 +62,8 @@ export async function signUp(
   }
 
   return {
-    message: "Check your email to confirm your account, then sign in.",
+    message:
+      "Check your email and click the confirmation link. You'll be signed in automatically.",
   };
 }
 
@@ -90,7 +91,7 @@ export async function signIn(
   }
 
   const next = String(formData.get("next") ?? "").trim();
-  redirect(next && next.startsWith("/") ? next : "/dashboard");
+  redirect(next?.startsWith("/") ? next : "/dashboard");
 }
 
 export async function signOut() {
@@ -104,10 +105,10 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${getOrigin()}/auth/callback`,
+      redirectTo: `${getOrigin()}/auth/callback?next=/dashboard`,
     },
   });
-  if (error) return redirect(`/login?error=oauth`);
+  if (error) return redirect("/login?error=oauth");
   if (data.url) redirect(data.url);
 }
 
@@ -116,9 +117,9 @@ export async function signInWithGitHub() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "github",
     options: {
-      redirectTo: `${getOrigin()}/auth/callback`,
+      redirectTo: `${getOrigin()}/auth/callback?next=/dashboard`,
     },
   });
-  if (error) return redirect(`/login?error=oauth`);
+  if (error) return redirect("/login?error=oauth");
   if (data.url) redirect(data.url);
 }
