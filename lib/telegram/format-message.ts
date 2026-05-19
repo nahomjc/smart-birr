@@ -6,9 +6,9 @@ export function formatTelegramAiReply(raw: string): string {
   if (!text) return text;
 
   text = text.replace(/^```[\w]*\n?/gm, "").replace(/```$/gm, "").trim();
-  text = text.replace(/\*\*(.+?)\*\*/gs, "<b>$1</b>");
-  text = text.replace(/__(.+?)__/gs, "<b>$1</b>");
-  text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<i>$1</i>");
+  text = text.replace(/\*\*([\s\S]+?)\*\*/g, "<b>$1</b>");
+  text = text.replace(/__([\s\S]+?)__/g, "<b>$1</b>");
+  text = text.replace(/\*([^*\n]+)\*/g, "<i>$1</i>");
   text = text.replace(/^#{1,3}\s+(.+)$/gm, "<b>$1</b>");
   text = text.replace(/^\s*[-*]\s+/gm, "• ");
   text = text.replace(/^\s*(\d+)[.)]\s+/gm, "$1. ");

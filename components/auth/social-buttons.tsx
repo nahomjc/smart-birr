@@ -1,7 +1,5 @@
 "use client";
 
-import { signInWithGitHub, signInWithGoogle } from "@/app/actions/auth";
-
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
@@ -33,27 +31,24 @@ function GitHubIcon() {
   );
 }
 
+const iconClass =
+  "flex h-11 w-11 items-center justify-center rounded-full bg-white/10 opacity-60";
+
 export function SocialButtons() {
   return (
-    <div className="flex justify-center gap-4 pt-2">
-      <form action={signInWithGoogle}>
-        <button
-          type="submit"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20"
-          aria-label="Sign in with Google"
-        >
+    <div className="pt-2">
+      <div className="flex justify-center gap-4" aria-hidden>
+        <span className={iconClass}>
           <GoogleIcon />
-        </button>
-      </form>
-      <form action={signInWithGitHub}>
-        <button
-          type="submit"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20"
-          aria-label="Sign in with GitHub"
-        >
+        </span>
+        <span className={iconClass}>
           <GitHubIcon />
-        </button>
-      </form>
+        </span>
+      </div>
+      <p className="mt-3 text-center text-xs text-white/60" role="status">
+        Google and GitHub sign-in are coming soon.
+      </p>
     </div>
   );
 }
+
