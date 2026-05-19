@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import type { TelegramUpdate } from "@/lib/telegram/bot";
+import {
+  answerCallbackQuery,
+  resolveCallbackChatId,
+  sendTelegramMessage,
+  type TelegramUpdate,
+} from "@/lib/telegram/bot";
 import {
   handleTelegramCallback,
   handleTelegramMessage,
@@ -16,6 +21,9 @@ export function GET() {
 }
 
 export async function POST(request: Request) {
+  let pendingCallbackId: string | undefined;
+  let pendingChatId: number | undefined;
+
   try {
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
     if (secret) {
@@ -33,18 +41,16 @@ export async function POST(request: Request) {
 
     const callback = update.callback_query;
     if (callback?.data && callback.from) {
-      const chatId = callback.message?.chat.id;
-      if (!chatId) {
-        return NextResponse.json({ ok: true });
-      }
-      const name =
-        callback.from.first_name ?? callback.from.username ?? "Telegram User";
+      const chatId = resolveCallbackChatId(callback);
+      pendingCallbackId = callback.id;
+      pendingChatId = chatId;
+
       await handleTelegramCallback(
         chatId,
         callback.from.id,
         callback.data,
         callback.id,
-        name,
+        callback.message?.message_id,
       );
       return NextResponse.json({ ok: true });
     }
@@ -56,16 +62,21 @@ export async function POST(request: Request) {
 
     const chatId = message.chat.id;
     const telegramId = message.from.id;
-    const name =
-      message.from.first_name ??
-      message.from.username ??
-      "Telegram User";
-
-    await handleTelegramMessage(chatId, telegramId, message.text, name);
+    await handleTelegramMessage(chatId, telegramId, message.text);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Telegram webhook error:", error);
+    if (pendingCallbackId) {
+      await answerCallbackQuery(pendingCallbackId, "Something went wrong");
+    }
+    if (pendingChatId) {
+      await sendTelegramMessage(
+        pendingChatId,
+        "⚠️ Something went wrong. Tap <b>📝 Log expense</b> to try again.",
+        "HTML",
+      );
+    }
     return NextResponse.json({ ok: true });
   }
 }

@@ -1,3 +1,4 @@
+import { AuthenticatedFloatingChat } from "@/components/chat/authenticated-floating-chat";
 import { LandingHeader } from "@/components/landing/header";
 import { Hero } from "@/components/landing/hero";
 import { Features, TrustBadges } from "@/components/landing/features";
@@ -22,6 +23,7 @@ export default function Home() {
         <Pricing />
         <FooterCta />
       </main>
+      <AuthenticatedFloatingChat />
     </div>
   );
 }

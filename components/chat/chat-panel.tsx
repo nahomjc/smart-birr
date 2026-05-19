@@ -17,7 +17,13 @@ function newMessageId() {
   return crypto.randomUUID();
 }
 
-export function ChatPanel() {
+type ChatPanelProps = {
+  /** Fills parent height; use inside floating shell (no outer card chrome). */
+  embedded?: boolean;
+  className?: string;
+};
+
+export function ChatPanel({ embedded = false, className = "" }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -166,8 +172,12 @@ export function ChatPanel() {
     }
   }
 
+  const shellClass = embedded
+    ? "flex h-full min-h-0 flex-col overflow-hidden bg-transparent"
+    : "flex h-[min(70vh,600px)] flex-col overflow-hidden rounded-2xl border border-emerald-900/30 bg-[#0f1714] shadow-lg shadow-black/30";
+
   return (
-    <div className="flex h-[min(70vh,600px)] flex-col overflow-hidden rounded-2xl border border-emerald-900/30 bg-[#0f1714] shadow-lg shadow-black/30">
+    <div className={`${shellClass}${className ? ` ${className}` : ""}`}>
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.map((msg) => {
           const showTyping =

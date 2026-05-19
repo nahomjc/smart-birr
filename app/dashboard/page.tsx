@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
 import { DashboardMetricsCards } from "@/components/dashboard/dashboard-metrics-cards";
+import { SpendingTimelineChart } from "@/components/dashboard/spending-timeline-chart";
+import { getSpendingTimeline } from "@/lib/data/spending-timeline";
 import { MonthlyExportButton } from "@/components/dashboard/monthly-export-button";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { Card } from "@/components/ui/card";
@@ -22,10 +24,12 @@ export default async function DashboardPage() {
   let planningSummary: Awaited<
     ReturnType<typeof getPlanningDashboardSummary>
   > | null = null;
+  let timeline: Awaited<ReturnType<typeof getSpendingTimeline>> | null = null;
 
   try {
     data = await getDashboardOverview(userId);
     planningSummary = await getPlanningDashboardSummary(userId);
+    timeline = await getSpendingTimeline(userId);
   } catch {
     /* DB may be unavailable during first setup */
   }
@@ -105,6 +109,8 @@ export default async function DashboardPage() {
           </div>
         </Card>
       )}
+
+      {timeline && <SpendingTimelineChart data={timeline} />}
 
       <DashboardMetricsCards
         totalSpent={data.totalSpent}

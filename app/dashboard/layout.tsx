@@ -4,6 +4,7 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { loadNotificationsSnapshot } from "@/app/actions/notifications";
 import { getSessionUserId, getSupabaseUser } from "@/lib/auth/session";
+import { FloatingAiChat } from "@/components/chat/floating-ai-chat";
 import { Logo } from "@/components/landing/logo";
 import { theme } from "@/lib/theme";
 
@@ -44,6 +45,7 @@ export default async function DashboardLayout({
         <DashboardNav />
         <div className="mt-8">{children}</div>
       </main>
+      <FloatingAiChat />
     </div>
   );
 }

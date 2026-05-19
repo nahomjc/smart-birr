@@ -35,7 +35,8 @@ export function categoryCallbackData(category: string): string {
 
 export function parseCategoryCallback(data: string): string | null {
   if (!data.startsWith(CATEGORY_CALLBACK_PREFIX)) return null;
-  return data.slice(CATEGORY_CALLBACK_PREFIX.length);
+  const category = data.slice(CATEGORY_CALLBACK_PREFIX.length);
+  return category.length > 0 ? category : null;
 }
 
 export function buildCategoryInlineKeyboard() {

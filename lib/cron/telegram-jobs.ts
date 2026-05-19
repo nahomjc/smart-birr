@@ -1,4 +1,4 @@
-import { isNotNull } from "drizzle-orm";
+import { and, isNotNull } from "drizzle-orm";
 import { requireDb, users } from "@/lib/db";
 import { formatEthiopiaNow } from "@/lib/datetime/ethiopia";
 import {
@@ -22,7 +22,7 @@ import { generateMorningSpendingGuide } from "@/lib/telegram/morning-guide";
 async function listTelegramUsers() {
   const db = requireDb();
   return db.query.users.findMany({
-    where: isNotNull(users.telegramId),
+    where: and(isNotNull(users.telegramId), isNotNull(users.authUserId)),
     columns: {
       id: true,
       telegramId: true,

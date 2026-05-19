@@ -15,7 +15,7 @@ export type TelegramUpdate = {
   callback_query?: {
     id: string;
     from: { id: number; first_name?: string; username?: string };
-    message?: { chat: { id: number } };
+    message?: { message_id: number; chat: { id: number } };
     data?: string;
   };
 };
@@ -64,7 +64,7 @@ export async function sendTelegramMessage(
   text: string,
   parseMode: "HTML" | "Markdown" = "HTML",
   replyMarkup?: TelegramReplyMarkup,
-) {
+): Promise<boolean> {
   const body: Record<string, unknown> = {
     chat_id: chatId,
     text: text.slice(0, 4096),
@@ -82,6 +82,27 @@ export async function sendTelegramMessage(
   if (!res.ok) {
     const err = await res.text();
     console.error("Telegram sendMessage failed:", err);
+    return false;
+  }
+  return true;
+}
+
+export async function editTelegramMessageReplyMarkup(
+  chatId: number,
+  messageId: number,
+): Promise<void> {
+  const res = await fetch(`${TELEGRAM_API}${token()}/editMessageReplyMarkup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: { inline_keyboard: [] },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("Telegram editMessageReplyMarkup failed:", err);
   }
 }
 
@@ -101,6 +122,18 @@ export async function answerCallbackQuery(
     const err = await res.text();
     console.error("Telegram answerCallbackQuery failed:", err);
   }
+}
+
+export async function getWebhookInfo() {
+  const res = await fetch(`${TELEGRAM_API}${token()}/getWebhookInfo`);
+  return res.json();
+}
+
+export function resolveCallbackChatId(callback: {
+  from: { id: number };
+  message?: { chat: { id: number } };
+}): number {
+  return callback.message?.chat.id ?? callback.from.id;
 }
 
 export async function setWebhook(url: string) {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setWebhook } from "@/lib/telegram/bot";
+import { getWebhookInfo, setWebhook } from "@/lib/telegram/bot";
 
 export const dynamic = "force-dynamic";
 
@@ -35,14 +35,24 @@ export async function GET(request: Request) {
 
   const webhookUrl = `${baseUrl.replace(/\/$/, "")}/api/telegram/webhook`;
   const result = await setWebhook(webhookUrl);
+  const webhookInfo = await getWebhookInfo();
   const webhookSecretConfigured = !!process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+  const allowedUpdates =
+    (webhookInfo as { result?: { allowed_updates?: string[] } }).result
+      ?.allowed_updates ?? [];
 
   return NextResponse.json({
     webhookUrl,
     webhookSecretConfigured,
     result,
+    webhookInfo,
+    callbackQueryEnabled: allowedUpdates.includes("callback_query"),
     hint: webhookSecretConfigured
       ? "Webhook secret registered with Telegram."
       : "Set TELEGRAM_WEBHOOK_SECRET in production and call setup again.",
+    action:
+      allowedUpdates.length > 0 && !allowedUpdates.includes("callback_query")
+        ? "Re-run this setup URL — inline buttons need callback_query in allowed_updates."
+        : undefined,
   });
 }

@@ -4,13 +4,17 @@ import {
   spendingSummary,
 } from "../finance/budget-engine";
 import {
-  getOrCreateTelegramUser,
   upsertBudgetFromIncome,
   getMonthlyExpenses,
 } from "../users/service";
 import { getBudgetAllocation, getCurrentBudget } from "../finance/budget-service";
 import { processFinancialMessage } from "../services/financial-message";
-import { formatEthiopiaNow } from "../datetime/ethiopia";
+import {
+  buildTelegramSignupHelpMessage,
+  buildTelegramSignupRequiredMessage,
+  buildTelegramSignupStartMessage,
+  getLinkedTelegramUser,
+} from "./access";
 import {
   handleExpenseCallback,
   handleExpenseTextStep,
@@ -25,29 +29,62 @@ import {
 } from "./keyboards";
 import { getTelegramSession } from "./session";
 import {
+  answerCallbackQuery,
   HELP_TEXT,
   sendTelegramMessage,
   START_TEXT,
   withTelegramTyping,
 } from "./bot";
 
+async function sendSignupRequired(chatId: number) {
+  await sendTelegramMessage(
+    chatId,
+    buildTelegramSignupRequiredMessage(),
+    "HTML",
+  );
+}
+
 export async function handleTelegramCallback(
   chatId: number,
   telegramUserId: number,
   callbackData: string,
   callbackQueryId: string,
-  displayName?: string,
+  sourceMessageId?: number,
 ) {
-  const user = await getOrCreateTelegramUser(telegramUserId, displayName);
-  const handled = await handleExpenseCallback(
-    chatId,
-    telegramUserId,
-    user.id,
-    callbackData,
-    callbackQueryId,
-  );
-  if (!handled) {
-    await sendTelegramMessage(chatId, "Unknown action. Tap /help.", "HTML", MAIN_REPLY_KEYBOARD);
+  const user = await getLinkedTelegramUser(telegramUserId);
+  if (!user) {
+    await answerCallbackQuery(callbackQueryId, "Sign up on the web app first");
+    await sendSignupRequired(chatId);
+    return;
+  }
+
+  try {
+    const handled = await handleExpenseCallback(
+      chatId,
+      telegramUserId,
+      user.id,
+      callbackData,
+      callbackQueryId,
+      sourceMessageId,
+    );
+    if (!handled) {
+      await answerCallbackQuery(callbackQueryId);
+      await sendTelegramMessage(
+        chatId,
+        "That button is outdated. Tap <b>📝 Log expense</b> to start again.",
+        "HTML",
+        MAIN_REPLY_KEYBOARD,
+      );
+    }
+  } catch (error) {
+    console.error("Telegram callback error:", error);
+    await answerCallbackQuery(callbackQueryId, "Something went wrong");
+    await sendTelegramMessage(
+      chatId,
+      "⚠️ Something went wrong. Tap <b>📝 Log expense</b> to try again.",
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
+    );
   }
 }
 
@@ -55,11 +92,36 @@ export async function handleTelegramMessage(
   chatId: number,
   telegramUserId: number,
   text: string,
-  displayName?: string,
 ) {
-  const user = await getOrCreateTelegramUser(telegramUserId, displayName);
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
+
+  if (lower === "/chatid") {
+    await sendTelegramMessage(
+      chatId,
+      `🆔 <b>Your Telegram IDs</b>
+
+<b>Chat ID:</b> <code>${chatId}</code>
+<b>User ID:</b> <code>${telegramUserId}</code>
+<i>Paste User ID in Smart Birr → Settings → Telegram to link your web account.</i>`,
+      "HTML",
+    );
+    return;
+  }
+
+  const user = await getLinkedTelegramUser(telegramUserId);
+  if (!user) {
+    if (lower === "/start") {
+      await sendTelegramMessage(chatId, buildTelegramSignupStartMessage(), "HTML");
+      return;
+    }
+    if (lower === "/help") {
+      await sendTelegramMessage(chatId, buildTelegramSignupHelpMessage(), "HTML");
+      return;
+    }
+    await sendSignupRequired(chatId);
+    return;
+  }
 
   const session = await getTelegramSession(telegramUserId);
   if (session && session.state !== "idle") {
@@ -100,19 +162,6 @@ export async function handleTelegramMessage(
   }
   if (lower === "/expense") {
     await startExpenseFlow(chatId, telegramUserId, user.id, { period: "manual" });
-    return;
-  }
-  if (lower === "/chatid") {
-    await sendTelegramMessage(
-      chatId,
-      `🆔 <b>Your Telegram IDs</b>
-
-<b>Chat ID:</b> <code>${chatId}</code>
-<b>User ID:</b> <code>${telegramUserId}</code>
-<i>Paste User ID in Smart Birr → Settings → Telegram to link your web account.</i>`,
-      "HTML",
-      MAIN_REPLY_KEYBOARD,
-    );
     return;
   }
 

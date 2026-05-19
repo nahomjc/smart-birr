@@ -1,4 +1,4 @@
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { requireDb, expenses } from "../db";
 import { getCategoryByName } from "../db/seed-categories";
 import { normalizeCategory } from "./categories";
@@ -39,8 +39,21 @@ export async function logExpense(
 export async function getMonthlyExpenses(userId: string) {
   const db = requireDb();
   const monthStart = getMonthStart();
+  return getExpensesBetween(userId, monthStart, new Date());
+}
+
+export async function getExpensesBetween(
+  userId: string,
+  start: Date,
+  endExclusive: Date,
+) {
+  const db = requireDb();
   return db.query.expenses.findMany({
-    where: and(eq(expenses.userId, userId), gte(expenses.date, monthStart)),
+    where: and(
+      eq(expenses.userId, userId),
+      gte(expenses.date, start),
+      lt(expenses.date, endExclusive),
+    ),
     orderBy: [desc(expenses.date)],
     with: { category: true },
   });

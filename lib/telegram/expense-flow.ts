@@ -19,7 +19,11 @@ import {
   upsertTelegramSession,
   type TelegramSessionData,
 } from "./session";
-import { answerCallbackQuery, sendTelegramMessage } from "./bot";
+import {
+  answerCallbackQuery,
+  editTelegramMessageReplyMarkup,
+  sendTelegramMessage,
+} from "./bot";
 
 const PERIOD_LABELS: Record<string, string> = {
   lunch: "lunch",
@@ -54,6 +58,7 @@ export async function handleExpenseCallback(
   userId: string,
   callbackData: string,
   callbackQueryId: string,
+  sourceMessageId?: number,
 ): Promise<boolean> {
   if (callbackData === CALLBACK_EXPENSE_CANCEL) {
     await answerCallbackQuery(callbackQueryId, "Cancelled");
@@ -79,17 +84,30 @@ export async function handleExpenseCallback(
   if (!category) return false;
 
   await answerCallbackQuery(callbackQueryId);
+
+  if (sourceMessageId) {
+    await editTelegramMessageReplyMarkup(chatId, sourceMessageId);
+  }
+
   await upsertTelegramSession(telegramId, userId, "expense_amount", {
     ...((await getTelegramSession(telegramId))?.data ?? {}),
     category,
   });
 
-  await sendTelegramMessage(
+  const sent = await sendTelegramMessage(
     chatId,
     `💰 <b>${category}</b>\n\nEnter the amount in <b>ETB</b> (numbers only).\n\nExample: <code>350</code>`,
     "HTML",
     EXPENSE_AMOUNT_KEYBOARD,
   );
+  if (!sent) {
+    await sendTelegramMessage(
+      chatId,
+      "⚠️ Could not send the next step. Tap <b>📝 Log expense</b> to try again.",
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
+    );
+  }
   return true;
 }
 
