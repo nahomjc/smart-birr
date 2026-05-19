@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { IntroGate } from "@/components/intro/intro-gate";
+import { IntroSplashView } from "@/components/intro/intro-splash-view";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,7 +30,17 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div
+          id="intro-bootstrap"
+          className="intro-overlay"
+          aria-label="Loading Smart Birr"
+          suppressHydrationWarning
+        >
+          <IntroSplashView />
+        </div>
+        <IntroGate>{children}</IntroGate>
+      </body>
     </html>
   );
 }

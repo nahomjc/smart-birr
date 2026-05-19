@@ -54,7 +54,7 @@ Add these to `.env` locally and to **Vercel → Settings → Environment Variabl
 | `TELEGRAM_SETUP_KEY` | Yes in production | Random string used to protect `GET /api/telegram/setup` |
 | `NEXT_PUBLIC_APP_URL` | Yes for webhook setup | Public HTTPS base URL, e.g. `https://smart-birr.vercel.app` (no trailing slash) |
 | `OPENROUTER_API_KEY` | Yes for AI replies | Used when users send natural-language messages |
-| `OPENROUTER_MODEL` | No | Defaults to `deepseek/deepseek-chat` |
+| `OPENROUTER_MODEL` | No | Defaults to `deepseek/deepseek-chat` (no trailing spaces) |
 | `DATABASE_URL` | Yes | Postgres; Telegram users are stored in `users.telegram_id` |
 | `CRON_SECRET` | Yes on Vercel | Protects `/api/cron/*`; Vercel sends `Authorization: Bearer <CRON_SECRET>` |
 
