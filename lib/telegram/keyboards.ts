@@ -29,23 +29,35 @@ export const EXPENSE_DESCRIPTION_KEYBOARD = {
 
 const CATEGORY_CALLBACK_PREFIX = "exp_cat:";
 
-export function categoryCallbackData(category: string): string {
-  return `${CATEGORY_CALLBACK_PREFIX}${category}`;
+/** Short index-based callback_data (Telegram limit 64 bytes; avoids encoding issues). */
+export function categoryCallbackData(index: number): string {
+  return `${CATEGORY_CALLBACK_PREFIX}${index}`;
 }
 
 export function parseCategoryCallback(data: string): string | null {
   if (!data.startsWith(CATEGORY_CALLBACK_PREFIX)) return null;
-  const category = data.slice(CATEGORY_CALLBACK_PREFIX.length);
-  return category.length > 0 ? category : null;
+  const rest = data.slice(CATEGORY_CALLBACK_PREFIX.length);
+  if (!rest.length) return null;
+
+  const idx = Number.parseInt(rest, 10);
+  if (Number.isFinite(idx) && idx >= 0 && idx < EXPENSE_CATEGORIES.length) {
+    return EXPENSE_CATEGORIES[idx];
+  }
+
+  // Legacy buttons: exp_cat:Food
+  const legacy = EXPENSE_CATEGORIES.find(
+    (c) => c.toLowerCase() === rest.toLowerCase(),
+  );
+  return legacy ?? null;
 }
 
 export function buildCategoryInlineKeyboard() {
   const rows: { text: string; callback_data: string }[][] = [];
   const cats = [...EXPENSE_CATEGORIES];
   for (let i = 0; i < cats.length; i += 2) {
-    const row = cats.slice(i, i + 2).map((name) => ({
+    const row = cats.slice(i, i + 2).map((name, offset) => ({
       text: name,
-      callback_data: categoryCallbackData(name),
+      callback_data: categoryCallbackData(i + offset),
     }));
     rows.push(row);
   }

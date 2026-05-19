@@ -131,7 +131,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://your-app.vercel.app/api/telegram/webhook",
-    "allowed_updates": ["message"],
+    "allowed_updates": ["message", "callback_query"],
     "secret_token": "YOUR_TELEGRAM_WEBHOOK_SECRET"
   }'
 ```
@@ -238,6 +238,18 @@ Set `CRON_SECRET` in Vercel; Vercel injects it automatically for cron invocation
 ---
 
 ## 9. Troubleshooting
+
+### Inline buttons (category picker) do nothing
+
+- Telegram only sends button clicks if `callback_query` is in **allowed_updates**.
+- Call setup again (it registers both `message` and `callback_query`):
+
+  ```http
+  GET https://your-app.vercel.app/api/telegram/setup?key=YOUR_TELEGRAM_SETUP_KEY
+  ```
+
+- Confirm `getWebhookInfo` → `allowed_updates` includes `callback_query`.
+- After fixing the webhook, tap **📝 Log expense** again so you get fresh category buttons.
 
 ### Bot does not reply
 

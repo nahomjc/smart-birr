@@ -19,11 +19,7 @@ import {
   upsertTelegramSession,
   type TelegramSessionData,
 } from "./session";
-import {
-  answerCallbackQuery,
-  editTelegramMessageReplyMarkup,
-  sendTelegramMessage,
-} from "./bot";
+import { editTelegramMessageReplyMarkup, sendTelegramMessage } from "./bot";
 
 const PERIOD_LABELS: Record<string, string> = {
   lunch: "lunch",
@@ -47,9 +43,12 @@ export async function startExpenseFlow(
     options?.intro ??
     "📝 <b>Log expense</b>\n\nChoose a category (same as the dashboard):";
 
-  await sendTelegramMessage(chatId, intro, "HTML", {
-    inline_keyboard: buildCategoryInlineKeyboard().inline_keyboard,
-  });
+  await sendTelegramMessage(
+    chatId,
+    intro,
+    "HTML",
+    buildCategoryInlineKeyboard(),
+  );
 }
 
 export async function handleExpenseCallback(
@@ -57,11 +56,9 @@ export async function handleExpenseCallback(
   telegramId: number,
   userId: string,
   callbackData: string,
-  callbackQueryId: string,
   sourceMessageId?: number,
 ): Promise<boolean> {
   if (callbackData === CALLBACK_EXPENSE_CANCEL) {
-    await answerCallbackQuery(callbackQueryId, "Cancelled");
     await clearTelegramSession(telegramId);
     await sendTelegramMessage(
       chatId,
@@ -75,15 +72,12 @@ export async function handleExpenseCallback(
   if (callbackData === CALLBACK_SKIP_DESC) {
     const session = await getTelegramSession(telegramId);
     if (session?.state !== "expense_description") return false;
-    await answerCallbackQuery(callbackQueryId);
     await finishExpense(chatId, telegramId, userId, session.data, "");
     return true;
   }
 
   const category = parseCategoryCallback(callbackData);
   if (!category) return false;
-
-  await answerCallbackQuery(callbackQueryId);
 
   if (sourceMessageId) {
     await editTelegramMessageReplyMarkup(chatId, sourceMessageId);

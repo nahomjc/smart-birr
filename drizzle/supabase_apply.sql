@@ -320,6 +320,9 @@ CREATE INDEX IF NOT EXISTS telegram_sessions_user_id_idx
 
 ALTER TABLE public.telegram_sessions ENABLE ROW LEVEL SECURITY;
 
+-- Server-only: disable RLS so the webhook can read/write sessions (see 0008).
+ALTER TABLE public.telegram_sessions DISABLE ROW LEVEL SECURITY;
+
 -- -----------------------------------------------------------------------------
 -- Done. Regenerate a budget in the app so budget_limits rows are created.
 -- -----------------------------------------------------------------------------

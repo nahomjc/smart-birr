@@ -59,16 +59,17 @@ export async function handleTelegramCallback(
   }
 
   try {
+    // Acknowledge immediately so Telegram clears the loading state on the button.
+    await answerCallbackQuery(callbackQueryId);
+
     const handled = await handleExpenseCallback(
       chatId,
       telegramUserId,
       user.id,
       callbackData,
-      callbackQueryId,
       sourceMessageId,
     );
     if (!handled) {
-      await answerCallbackQuery(callbackQueryId);
       await sendTelegramMessage(
         chatId,
         "That button is outdated. Tap <b>📝 Log expense</b> to start again.",
@@ -78,7 +79,6 @@ export async function handleTelegramCallback(
     }
   } catch (error) {
     console.error("Telegram callback error:", error);
-    await answerCallbackQuery(callbackQueryId, "Something went wrong");
     await sendTelegramMessage(
       chatId,
       "⚠️ Something went wrong. Tap <b>📝 Log expense</b> to try again.",
