@@ -1,5 +1,6 @@
 import { isNotNull } from "drizzle-orm";
 import { requireDb, users } from "@/lib/db";
+import { formatEthiopiaNow } from "@/lib/datetime/ethiopia";
 import {
   formatBirr,
   spendingSummary,
@@ -14,6 +15,9 @@ import { getMonthlyExpenses } from "@/lib/finance/expense-service";
 import { formatPeriodLabel, getCurrentPeriod } from "@/lib/finance/period";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { sendTelegramMessage } from "@/lib/telegram/bot";
+import { startExpenseFlow } from "@/lib/telegram/expense-flow";
+import { MAIN_REPLY_KEYBOARD } from "@/lib/telegram/keyboards";
+import { generateMorningSpendingGuide } from "@/lib/telegram/morning-guide";
 
 async function listTelegramUsers() {
   const db = requireDb();
@@ -27,8 +31,10 @@ async function listTelegramUsers() {
   });
 }
 
-export async function runNightlyTelegramJobs() {
+/** ~7:00 AM Ethiopia — AI daily spending guide (breakfast, lunch, coffee, etc.) */
+export async function runMorningTelegramJobs() {
   const telegramUsers = await listTelegramUsers();
+  const when = formatEthiopiaNow();
   let sent = 0;
 
   for (const user of telegramUsers) {
@@ -36,34 +42,104 @@ export async function runNightlyTelegramJobs() {
     if (!chatId) continue;
 
     try {
-      const snapshot = await getBudgetInsightSnapshot(user.id);
-
-      if (snapshot.todaySpent === 0) {
-        const reminder = `📝 <b>Daily reminder</b>\n\nDon't forget to log today's expenses.\n\nTracking spending daily helps me improve your plan and savings tips.\n\nExample: <i>Spent 500 birr on lunch</i>`;
-        await sendTelegramMessage(chatId, reminder);
-        await createNotification(user.id, {
-          type: "expense_reminder",
-          title: "Log today's expenses",
-          message: reminder.replace(/<[^>]+>/g, ""),
-        });
-        sent++;
-        continue;
+      let guide: string;
+      try {
+        guide = await generateMorningSpendingGuide(user.id);
+      } catch {
+        guide =
+          "Set your monthly income and budget on the web app, then I can suggest daily amounts for food, transport, and coffee.";
       }
 
-      const summary = formatDailySummaryTelegram(snapshot);
-      if (summary) {
-        await sendTelegramMessage(chatId, summary);
-        await createNotification(user.id, {
-          type: "daily_summary",
-          title: "Daily budget summary",
-          message: summary.replace(/<[^>]+>/g, "").slice(0, 500),
-        });
-        sent++;
+      const msg = `🌅 <b>Good morning</b> (${when} · Ethiopia)
+
+${guide}
+
+Tap <b>📝 Log expense</b> anytime to record spending.`;
+
+      await sendTelegramMessage(chatId, msg, "HTML", MAIN_REPLY_KEYBOARD);
+      await createNotification(user.id, {
+        type: "morning_guide",
+        title: "Morning spending guide",
+        message: msg.replace(/<[^>]+>/g, "").slice(0, 500),
+      });
+      sent++;
+    } catch (e) {
+      console.error(`Morning job failed for user ${user.id}:`, e);
+    }
+  }
+
+  return { users: telegramUsers.length, messagesSent: sent };
+}
+
+/** ~1:00 PM Ethiopia — lunch spend check-in with category keyboard */
+export async function runLunchTelegramJobs() {
+  const telegramUsers = await listTelegramUsers();
+  const when = formatEthiopiaNow();
+  let sent = 0;
+
+  for (const user of telegramUsers) {
+    const telegramId = user.telegramId;
+    if (telegramId == null) continue;
+    const chatId = telegramId;
+
+    try {
+      await startExpenseFlow(chatId, telegramId, user.id, {
+        period: "lunch",
+        intro: `🍽 <b>Lunch check-in</b> (${when} · Ethiopia)
+
+How much have you spent so far today — especially for lunch?
+
+Pick a category, then enter amount & description (same as dashboard):`,
+      });
+      await createNotification(user.id, {
+        type: "lunch_checkin",
+        title: "Lunch spending check-in",
+        message: "Log what you spent today so far (lunch check-in).",
+      });
+      sent++;
+    } catch (e) {
+      console.error(`Lunch job failed for user ${user.id}:`, e);
+    }
+  }
+
+  return { users: telegramUsers.length, messagesSent: sent };
+}
+
+/** ~9:00 PM Ethiopia — evening check-in + optional daily summary */
+export async function runNightlyTelegramJobs() {
+  const telegramUsers = await listTelegramUsers();
+  const when = formatEthiopiaNow();
+  let sent = 0;
+
+  for (const user of telegramUsers) {
+    const telegramId = user.telegramId;
+    if (telegramId == null) continue;
+    const chatId = telegramId;
+
+    try {
+      const snapshot = await getBudgetInsightSnapshot(user.id);
+
+      await startExpenseFlow(chatId, telegramId, user.id, {
+        period: "night",
+        intro: `🌙 <b>Evening check-in</b> (${when} · Ethiopia)
+
+How much did you spend today (including dinner, transport, snacks)?
+
+Pick a category below:`,
+      });
+      sent++;
+
+      if (snapshot.todaySpent > 0) {
+        const summary = formatDailySummaryTelegram(snapshot);
+        if (summary) {
+          await sendTelegramMessage(chatId, summary, "HTML", MAIN_REPLY_KEYBOARD);
+          sent++;
+        }
       }
 
       const danger = formatDangerAlertTelegram(snapshot);
       if (danger && snapshot.dangerLevel !== "ok") {
-        await sendTelegramMessage(chatId, danger);
+        await sendTelegramMessage(chatId, danger, "HTML", MAIN_REPLY_KEYBOARD);
         await createNotification(user.id, {
           type: "budget_danger",
           title: "Budget warning",
@@ -71,6 +147,12 @@ export async function runNightlyTelegramJobs() {
         });
         sent++;
       }
+
+      await createNotification(user.id, {
+        type: "night_checkin",
+        title: "Evening spending check-in",
+        message: "Log today's spending (evening check-in).",
+      });
     } catch (e) {
       console.error(`Nightly job failed for user ${user.id}:`, e);
     }

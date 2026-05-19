@@ -242,6 +242,19 @@ export const planningGoalContributions = pgTable(
   ],
 );
 
+/** Multi-step Telegram flows (expense wizard, cron prompts). */
+export const telegramSessions = pgTable("telegram_sessions", {
+  telegramId: bigint("telegram_id", { mode: "number" }).primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  state: text("state").notNull().default("idle"),
+  data: jsonb("data").$type<Record<string, unknown>>().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 /** Email OTP codes for forgot-password (hashed). */
 export const passwordResetOtps = pgTable(
   "password_reset_otps",

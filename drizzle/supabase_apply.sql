@@ -304,5 +304,22 @@ CREATE INDEX IF NOT EXISTS password_reset_otps_email_created_idx
 ALTER TABLE public.password_reset_otps ENABLE ROW LEVEL SECURITY;
 
 -- -----------------------------------------------------------------------------
+-- 11. Telegram bot sessions (see drizzle/0007_telegram_sessions.sql)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.telegram_sessions (
+  telegram_id bigint PRIMARY KEY NOT NULL,
+  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  state text DEFAULT 'idle' NOT NULL,
+  data jsonb DEFAULT '{}'::jsonb,
+  updated_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS telegram_sessions_user_id_idx
+  ON public.telegram_sessions (user_id);
+
+ALTER TABLE public.telegram_sessions ENABLE ROW LEVEL SECURITY;
+
+-- -----------------------------------------------------------------------------
 -- Done. Regenerate a budget in the app so budget_limits rows are created.
 -- -----------------------------------------------------------------------------

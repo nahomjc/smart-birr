@@ -7,16 +7,49 @@ import {
   getOrCreateTelegramUser,
   upsertBudgetFromIncome,
   getMonthlyExpenses,
-  updateUserIncome,
 } from "../users/service";
 import { getBudgetAllocation, getCurrentBudget } from "../finance/budget-service";
 import { processFinancialMessage } from "../services/financial-message";
+import { formatEthiopiaNow } from "../datetime/ethiopia";
+import {
+  handleExpenseCallback,
+  handleExpenseTextStep,
+  isLogExpenseTrigger,
+  startExpenseFlow,
+} from "./expense-flow";
+import {
+  MAIN_REPLY_KEYBOARD,
+  REPLY_BUDGET,
+  REPLY_HELP,
+  REPLY_REPORT,
+} from "./keyboards";
+import { getTelegramSession } from "./session";
 import {
   HELP_TEXT,
   sendTelegramMessage,
   START_TEXT,
   withTelegramTyping,
 } from "./bot";
+
+export async function handleTelegramCallback(
+  chatId: number,
+  telegramUserId: number,
+  callbackData: string,
+  callbackQueryId: string,
+  displayName?: string,
+) {
+  const user = await getOrCreateTelegramUser(telegramUserId, displayName);
+  const handled = await handleExpenseCallback(
+    chatId,
+    telegramUserId,
+    user.id,
+    callbackData,
+    callbackQueryId,
+  );
+  if (!handled) {
+    await sendTelegramMessage(chatId, "Unknown action. Tap /help.", "HTML", MAIN_REPLY_KEYBOARD);
+  }
+}
 
 export async function handleTelegramMessage(
   chatId: number,
@@ -28,15 +61,26 @@ export async function handleTelegramMessage(
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
 
+  const session = await getTelegramSession(telegramUserId);
+  if (session && session.state !== "idle") {
+    const handled = await handleExpenseTextStep(
+      chatId,
+      telegramUserId,
+      user.id,
+      trimmed,
+    );
+    if (handled) return;
+  }
+
   if (lower === "/start") {
-    await sendTelegramMessage(chatId, START_TEXT);
+    await sendTelegramMessage(chatId, START_TEXT, "HTML", MAIN_REPLY_KEYBOARD);
     return;
   }
-  if (lower === "/help") {
-    await sendTelegramMessage(chatId, HELP_TEXT);
+  if (lower === "/help" || trimmed === REPLY_HELP) {
+    await sendTelegramMessage(chatId, HELP_TEXT, "HTML", MAIN_REPLY_KEYBOARD);
     return;
   }
-  if (lower === "/budget") {
+  if (lower === "/budget" || trimmed === REPLY_BUDGET) {
     await withTelegramTyping(chatId, () =>
       handleBudgetCommand(chatId, user.id, user.income),
     );
@@ -46,15 +90,16 @@ export async function handleTelegramMessage(
     await withTelegramTyping(chatId, () => handleSavingsCommand(chatId, user.id));
     return;
   }
-  if (lower === "/report") {
+  if (lower === "/report" || trimmed === REPLY_REPORT) {
     await withTelegramTyping(chatId, () => handleReportCommand(chatId, user.id));
     return;
   }
+  if (isLogExpenseTrigger(trimmed)) {
+    await startExpenseFlow(chatId, telegramUserId, user.id, { period: "manual" });
+    return;
+  }
   if (lower === "/expense") {
-    await sendTelegramMessage(
-      chatId,
-      "📝 Log expenses in plain language:\n\n• <i>Spent 500 birr on lunch</i>\n• <i>Paid 3000 for rent</i>\n• <i>1200 birr shopping today</i>\n\nI'll extract the amount and category automatically.",
-    );
+    await startExpenseFlow(chatId, telegramUserId, user.id, { period: "manual" });
     return;
   }
   if (lower === "/chatid") {
@@ -63,12 +108,10 @@ export async function handleTelegramMessage(
       `🆔 <b>Your Telegram IDs</b>
 
 <b>Chat ID:</b> <code>${chatId}</code>
-<i>Used to send you messages in this chat.</i>
-
 <b>User ID:</b> <code>${telegramUserId}</code>
-<i>Paste this in Smart Birr → Settings → Telegram to link your web account.</i>
-
-In a private chat with this bot, Chat ID and User ID are usually the same.`,
+<i>Paste User ID in Smart Birr → Settings → Telegram to link your web account.</i>`,
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
     );
     return;
   }
@@ -77,7 +120,7 @@ In a private chat with this bot, Chat ID and User ID are usually the same.`,
     processFinancialMessage(user.id, trimmed, { channel: "telegram" }),
   );
 
-  await sendTelegramMessage(chatId, reply);
+  await sendTelegramMessage(chatId, reply, "HTML", MAIN_REPLY_KEYBOARD);
 }
 
 async function handleBudgetCommand(
@@ -90,14 +133,21 @@ async function handleBudgetCommand(
   if (!budget && !incomeStr) {
     await sendTelegramMessage(
       chatId,
-      "Set your income first:\n<i>My income is 20000 birr per month</i>\n\nThen use /budget again.",
+      "Set your income first:\n<i>My income is 20000 birr per month</i>\n\nThen use 📊 Budget again.",
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
     );
     return;
   }
 
   const income = Number(budget?.monthlyIncome ?? incomeStr ?? 0);
   if (!income) {
-    await sendTelegramMessage(chatId, "Couldn't find your income. Tell me: <i>My income is 20000 birr</i>");
+    await sendTelegramMessage(
+      chatId,
+      "Couldn't find your income. Tell me: <i>My income is 20000 birr</i>",
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
+    );
     return;
   }
 
@@ -115,6 +165,8 @@ async function handleBudgetCommand(
 🛡 Emergency fund: ${formatBirr(plan.emergencyFund)}
 💰 Savings goal: ${formatBirr(plan.savingsGoal)}
 📦 Other/discretionary: ${formatBirr(plan.discretionary)}`,
+    "HTML",
+    MAIN_REPLY_KEYBOARD,
   );
 }
 
@@ -139,13 +191,18 @@ async function handleSavingsCommand(chatId: number, userId: string) {
   } else {
     msg += "Set your income to track savings. Example: <i>My income is 20000 birr</i>";
   }
-  await sendTelegramMessage(chatId, msg);
+  await sendTelegramMessage(chatId, msg, "HTML", MAIN_REPLY_KEYBOARD);
 }
 
 async function handleReportCommand(chatId: number, userId: string) {
   const monthExpenses = await getMonthlyExpenses(userId);
   if (!monthExpenses.length) {
-    await sendTelegramMessage(chatId, "No expenses logged this month yet. Try: <i>Spent 500 birr on lunch</i>");
+    await sendTelegramMessage(
+      chatId,
+      "No expenses logged this month yet. Tap <b>📝 Log expense</b> or say: <i>Spent 500 birr on lunch</i>",
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
+    );
     return;
   }
 
@@ -162,5 +219,5 @@ async function handleReportCommand(chatId: number, userId: string) {
   if (warnings.length) {
     msg += `\n⚠️ ${warnings.join(" ")}`;
   }
-  await sendTelegramMessage(chatId, msg);
+  await sendTelegramMessage(chatId, msg, "HTML", MAIN_REPLY_KEYBOARD);
 }

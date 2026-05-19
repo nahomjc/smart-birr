@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import type { TelegramUpdate } from "@/lib/telegram/bot";
-import { handleTelegramMessage } from "@/lib/telegram/handler";
+import {
+  handleTelegramCallback,
+  handleTelegramMessage,
+} from "@/lib/telegram/handler";
 
 export const dynamic = "force-dynamic";
 
-/** Browsers use GET — webhook only accepts POST from Telegram. */
 export function GET() {
   return NextResponse.json({
     ok: true,
@@ -28,6 +30,25 @@ export async function POST(request: Request) {
     }
 
     const update = (await request.json()) as TelegramUpdate;
+
+    const callback = update.callback_query;
+    if (callback?.data && callback.from) {
+      const chatId = callback.message?.chat.id;
+      if (!chatId) {
+        return NextResponse.json({ ok: true });
+      }
+      const name =
+        callback.from.first_name ?? callback.from.username ?? "Telegram User";
+      await handleTelegramCallback(
+        chatId,
+        callback.from.id,
+        callback.data,
+        callback.id,
+        name,
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     const message = update.message;
     if (!message?.text || !message.from) {
       return NextResponse.json({ ok: true });
@@ -40,12 +61,7 @@ export async function POST(request: Request) {
       message.from.username ??
       "Telegram User";
 
-    await handleTelegramMessage(
-      chatId,
-      telegramId,
-      message.text,
-      name,
-    );
+    await handleTelegramMessage(chatId, telegramId, message.text, name);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

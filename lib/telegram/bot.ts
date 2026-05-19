@@ -1,5 +1,9 @@
 const TELEGRAM_API = "https://api.telegram.org/bot";
 
+export type TelegramReplyMarkup =
+  | { keyboard: { text: string }[][]; resize_keyboard?: boolean; is_persistent?: boolean }
+  | { inline_keyboard: { text: string; callback_data: string }[][] };
+
 export type TelegramUpdate = {
   update_id: number;
   message?: {
@@ -7,6 +11,12 @@ export type TelegramUpdate = {
     from?: { id: number; first_name?: string; username?: string };
     chat: { id: number };
     text?: string;
+  };
+  callback_query?: {
+    id: string;
+    from: { id: number; first_name?: string; username?: string };
+    message?: { chat: { id: number } };
+    data?: string;
   };
 };
 
@@ -16,7 +26,6 @@ function token() {
   return t;
 }
 
-/** Telegram clears typing after ~5s — refresh while a slow handler runs. */
 const TYPING_REFRESH_MS = 4_000;
 
 export async function sendTelegramTyping(chatId: number): Promise<void> {
@@ -54,19 +63,43 @@ export async function sendTelegramMessage(
   chatId: number,
   text: string,
   parseMode: "HTML" | "Markdown" = "HTML",
+  replyMarkup?: TelegramReplyMarkup,
 ) {
+  const body: Record<string, unknown> = {
+    chat_id: chatId,
+    text: text.slice(0, 4096),
+    parse_mode: parseMode,
+  };
+  if (replyMarkup) {
+    body.reply_markup = replyMarkup;
+  }
+
   const res = await fetch(`${TELEGRAM_API}${token()}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text.slice(0, 4096),
-      parse_mode: parseMode,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.text();
     console.error("Telegram sendMessage failed:", err);
+  }
+}
+
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string,
+) {
+  const body: Record<string, unknown> = { callback_query_id: callbackQueryId };
+  if (text) body.text = text;
+
+  const res = await fetch(`${TELEGRAM_API}${token()}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("Telegram answerCallbackQuery failed:", err);
   }
 }
 
@@ -76,7 +109,7 @@ export async function setWebhook(url: string) {
     url: string;
     allowed_updates: string[];
     secret_token?: string;
-  } = { url, allowed_updates: ["message"] };
+  } = { url, allowed_updates: ["message", "callback_query"] };
   if (secret) {
     body.secret_token = secret;
   }
@@ -91,27 +124,33 @@ export async function setWebhook(url: string) {
 
 export const HELP_TEXT = `🪙 <b>Smart Birr</b> — your AI finance coach
 
+<b>Keyboard</b>
+📝 Log expense — step-by-step (category → amount → note)
+📊 Budget · 📈 Report · ❓ Help
+
 <b>Commands</b>
-/start — Welcome & setup
-/help — This message
-/budget — View or create your monthly budget
-/savings — Savings tips & goal check
-/report — This month's spending summary
-/expense — How to log expenses
-/chatid — Show your Telegram & chat IDs (for dashboard linking)
+/start — Welcome
+/budget — Monthly budget
+/savings — Savings check
+/report — Month summary
+/cancel — Stop current expense entry
 
 <b>Natural chat</b>
-Just message me like a friend:
 • Spent 500 birr on lunch
-• Help me save 5000 birr
-• Can I afford a car on 20k income?
-• Make me a monthly budget`;
+• Can I afford a laptop on 20k income?
+
+<i>Times below use Ethiopia (Addis Ababa).</i>
+🌅 ~7:00 — daily spending guide (AI)
+🍽 ~13:00 — lunch check-in
+🌙 ~21:00 — evening check-in`;
 
 export const START_TEXT = `👋 Welcome to <b>Smart Birr</b>!
 
-I'm your AI financial counselor for Ethiopian Birr (ETB).
+I'm your AI financial counselor for <b>ETB</b>.
 
-Tell me your monthly income to get a personalized budget, or log spending:
+Use the keyboard below to <b>log expenses</b> like the dashboard (category, amount, description), or chat naturally:
 <i>Spent 300 birr on taxi</i>
 
-Type /help for commands.`;
+Set income: <i>My income is 20000 birr</i>
+
+Type /help for more.`;

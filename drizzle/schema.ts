@@ -236,3 +236,19 @@ export const notifications = pgTable("notifications", {
 			name: "notifications_user_id_fkey"
 		}).onDelete("cascade"),
 ]);
+
+export const telegram_sessions = pgTable("telegram_sessions", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	telegram_id: bigint({ mode: "number" }).primaryKey().notNull(),
+	user_id: uuid().notNull(),
+	state: text().default('idle').notNull(),
+	data: jsonb().default({}),
+	updated_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("telegram_sessions_user_id_idx").using("btree", table.user_id.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.user_id],
+			foreignColumns: [users.id],
+			name: "telegram_sessions_user_id_fkey"
+		}).onDelete("cascade"),
+]);
