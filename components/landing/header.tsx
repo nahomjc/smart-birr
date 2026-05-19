@@ -39,7 +39,12 @@ export async function LandingHeader() {
   return (
     <header className={theme.header}>
       <div className={`${landingContainer} ${theme.headerBar}`}>
-        <Logo />
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <Logo />
+          <span className="rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300/95 sm:px-2.5 sm:text-[11px]">
+            Beta
+          </span>
+        </div>
         <nav className="hidden items-center gap-8 md:flex">
           {nav.map((item) => (
             <Link key={item.label} href={item.href} className={theme.navLink}>
