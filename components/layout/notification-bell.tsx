@@ -1,7 +1,14 @@
 "use client";
 
 import { Bell } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   getNotifications,
   markAllNotificationsReadAction,
@@ -31,7 +38,14 @@ export function NotificationBell({ initial }: NotificationBellProps) {
   const [items, setItems] = useState<NotificationItem[]>(initial.notifications);
   const [unreadCount, setUnreadCount] = useState(initial.unreadCount);
   const [loading, setLoading] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [panelStyle, setPanelStyle] = useState<{
+    top: number;
+    right: number;
+    width: number;
+  } | null>(null);
 
   const applyNotifications = useCallback((data: NotificationsSnapshot) => {
     setItems(data.notifications);
@@ -66,15 +80,52 @@ export function NotificationBell({ initial }: NotificationBellProps) {
     };
   }, [applyNotifications]);
 
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) {
+      setPanelStyle(null);
+      return;
+    }
+
+    const margin = 16;
+    const maxWidth = 352; // 22rem
+
+    function updatePosition() {
+      const button = buttonRef.current;
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(maxWidth, window.innerWidth - margin * 2);
+      let right = window.innerWidth - rect.right;
+      const leftEdge = window.innerWidth - right - width;
+      if (leftEdge < margin) {
+        right = window.innerWidth - width - margin;
+      }
+      setPanelStyle({
+        top: rect.bottom + 8,
+        right,
+        width,
+      });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: MouseEvent) {
+      const target = e.target as Node;
       if (
-        panelRef.current &&
-        !panelRef.current.contains(e.target as Node)
+        rootRef.current?.contains(target) ||
+        panelRef.current?.contains(target)
       ) {
-        setOpen(false);
+        return;
       }
+      setOpen(false);
     }
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
@@ -90,90 +141,103 @@ export function NotificationBell({ initial }: NotificationBellProps) {
     applyNotifications(data);
   }
 
-  return (
-    <div ref={panelRef} className="relative">
-      <button
-        type="button"
-        onClick={() => {
-          setOpen((v) => !v);
-          if (!open) void refresh(items.length === 0);
+  const panel =
+    open && panelStyle ? (
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-label="Notifications"
+        className="fixed z-[200] overflow-hidden rounded-2xl border border-emerald-900/30 bg-[#0f1714] shadow-xl shadow-black/40"
+        style={{
+          top: panelStyle.top,
+          right: panelStyle.right,
+          width: panelStyle.width,
         }}
-        className="relative rounded-xl p-2 text-zinc-400 transition hover:bg-emerald-950/40 hover:text-emerald-300"
-        aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
-        aria-expanded={open}
       >
-        <Bell className="h-5 w-5" aria-hidden />
-        {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+        <div className="flex items-center justify-between border-b border-emerald-900/25 px-4 py-3">
+          <h2 className="text-sm font-semibold text-zinc-100">Notifications</h2>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="text-xs text-emerald-400 transition hover:text-emerald-300"
+            >
+              Mark all read
+            </button>
+          )}
+        </div>
 
-      {open && (
-        <dialog
-          open
-          className="absolute right-0 z-50 mt-2 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-2xl border border-emerald-900/30 bg-[#0f1714] shadow-xl shadow-black/40"
-          aria-label="Notifications"
+        <ul className="max-h-80 overflow-y-auto">
+          {loading && items.length === 0 ? (
+            <li className="px-4 py-8 text-center text-sm text-zinc-500">
+              Loading…
+            </li>
+          ) : items.length === 0 ? (
+            <li className="px-4 py-8 text-center text-sm text-zinc-500">
+              No notifications yet
+            </li>
+          ) : (
+            items.map((n) => (
+              <li key={n.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!n.readAt) void markRead(n.id);
+                  }}
+                  className={`w-full border-b border-emerald-900/15 px-4 py-3 text-left transition hover:bg-emerald-950/30 ${
+                    n.readAt ? "opacity-70" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-zinc-100">
+                      {n.title}
+                    </p>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-zinc-600">
+                      {n.type}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">
+                    {n.message}
+                  </p>
+                  <p className="mt-1 text-[10px] text-zinc-600">
+                    {formatWhen(n.createdAt)}
+                    {!n.readAt && (
+                      <span className="ml-2 text-emerald-500">New</span>
+                    )}
+                  </p>
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+    ) : null;
+
+  return (
+    <>
+      <div ref={rootRef} className="relative">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => {
+            setOpen((v) => !v);
+            if (!open) void refresh(items.length === 0);
+          }}
+          className="relative rounded-xl p-2 text-zinc-400 transition hover:bg-emerald-950/40 hover:text-emerald-300"
+          aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+          aria-expanded={open}
         >
-          <div className="flex items-center justify-between border-b border-emerald-900/25 px-4 py-3">
-            <h2 className="text-sm font-semibold text-zinc-100">Notifications</h2>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={markAllRead}
-                className="text-xs text-emerald-400 transition hover:text-emerald-300"
-              >
-                Mark all read
-              </button>
-            )}
-          </div>
-
-          <ul className="max-h-80 overflow-y-auto">
-            {loading && items.length === 0 ? (
-              <li className="px-4 py-8 text-center text-sm text-zinc-500">
-                Loading…
-              </li>
-            ) : items.length === 0 ? (
-              <li className="px-4 py-8 text-center text-sm text-zinc-500">
-                No notifications yet
-              </li>
-            ) : (
-              items.map((n) => (
-                <li key={n.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!n.readAt) void markRead(n.id);
-                    }}
-                    className={`w-full border-b border-emerald-900/15 px-4 py-3 text-left transition hover:bg-emerald-950/30 ${
-                      n.readAt ? "opacity-70" : ""
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium text-zinc-100">
-                        {n.title}
-                      </p>
-                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-zinc-600">
-                        {n.type}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">
-                      {n.message}
-                    </p>
-                    <p className="mt-1 text-[10px] text-zinc-600">
-                      {formatWhen(n.createdAt)}
-                      {!n.readAt && (
-                        <span className="ml-2 text-emerald-500">New</span>
-                      )}
-                    </p>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        </dialog>
-      )}
-    </div>
+          <Bell className="h-5 w-5" aria-hidden />
+          {unreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+      {typeof document !== "undefined" && panel
+        ? createPortal(panel, document.body)
+        : null}
+    </>
   );
 }

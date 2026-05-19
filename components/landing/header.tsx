@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
-import { getSupabaseUser } from "@/lib/auth/session";
+import { loadNotificationsSnapshot } from "@/app/actions/notifications";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { getSessionUserId, getSupabaseUser } from "@/lib/auth/session";
 import { Logo } from "./logo";
 import { LandingUserMenu } from "./user-menu";
 import { landingContainer } from "./constants";
@@ -35,9 +37,13 @@ function authAvatarUrl(user: User): string | null {
 
 export async function LandingHeader() {
   const authUser = await getSupabaseUser();
+  const userId = await getSessionUserId();
+  const notifications = userId
+    ? await loadNotificationsSnapshot(userId)
+    : { notifications: [], unreadCount: 0 };
 
   return (
-    <header className={theme.header}>
+    <header className={`${theme.header} overflow-visible`}>
       <div className={`${landingContainer} ${theme.headerBar}`}>
         <div className="flex items-center gap-2.5 sm:gap-3">
           <Logo />
@@ -53,11 +59,14 @@ export async function LandingHeader() {
           ))}
         </nav>
         {authUser ? (
-          <LandingUserMenu
-            displayName={authDisplayName(authUser)}
-            email={authUser.email}
-            avatarUrl={authAvatarUrl(authUser)}
-          />
+          <div className="flex items-center gap-2 overflow-visible sm:gap-3">
+            <NotificationBell initial={notifications} />
+            <LandingUserMenu
+              displayName={authDisplayName(authUser)}
+              email={authUser.email}
+              avatarUrl={authAvatarUrl(authUser)}
+            />
+          </div>
         ) : (
           <Link
             href="/login"

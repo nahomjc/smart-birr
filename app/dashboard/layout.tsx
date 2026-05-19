@@ -21,10 +21,10 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-full bg-[#060d0b] text-zinc-100">
-      <header className="border-b border-emerald-900/30 bg-[#0a1210]/95 backdrop-blur-xl">
+      <header className="overflow-visible border-b border-emerald-900/30 bg-[#0a1210]/95 backdrop-blur-xl">
         <div className={`${theme.dashboardShell} ${theme.headerBar}`}>
           <Logo />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 overflow-visible">
             {authUser?.email && (
               <span className="hidden text-sm text-zinc-500 sm:inline">
                 {authUser.email}
