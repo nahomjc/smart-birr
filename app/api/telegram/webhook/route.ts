@@ -6,12 +6,16 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
     if (secret) {
       const header = request.headers.get("x-telegram-bot-api-secret-token");
       if (header !== secret) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
+    } else if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "TELEGRAM_WEBHOOK_SECRET is not set — webhook is open to unauthenticated POSTs",
+      );
     }
 
     const update = (await request.json()) as TelegramUpdate;

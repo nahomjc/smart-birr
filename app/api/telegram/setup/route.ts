@@ -9,6 +9,13 @@ export async function GET(request: Request) {
   const key = searchParams.get("key");
   const setupKey = process.env.TELEGRAM_SETUP_KEY;
 
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && !setupKey) {
+    return NextResponse.json(
+      { error: "Set TELEGRAM_SETUP_KEY in production before calling this route" },
+      { status: 403 },
+    );
+  }
   if (setupKey && key !== setupKey) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -28,6 +35,14 @@ export async function GET(request: Request) {
 
   const webhookUrl = `${baseUrl.replace(/\/$/, "")}/api/telegram/webhook`;
   const result = await setWebhook(webhookUrl);
+  const webhookSecretConfigured = !!process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
 
-  return NextResponse.json({ webhookUrl, result });
+  return NextResponse.json({
+    webhookUrl,
+    webhookSecretConfigured,
+    result,
+    hint: webhookSecretConfigured
+      ? "Webhook secret registered with Telegram."
+      : "Set TELEGRAM_WEBHOOK_SECRET in production and call setup again.",
+  });
 }

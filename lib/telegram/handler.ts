@@ -1,5 +1,3 @@
-import { financialCounselorReply } from "../ai/openrouter";
-import { extractExpenseFromMessage } from "../ai/extract-expense";
 import {
   formatBirr,
   generateBudgetPlan,
@@ -7,14 +5,12 @@ import {
 } from "../finance/budget-engine";
 import {
   getOrCreateTelegramUser,
-  getUserContext,
-  saveConversation,
-  logExpense,
   upsertBudgetFromIncome,
   getMonthlyExpenses,
   updateUserIncome,
 } from "../users/service";
 import { getBudgetAllocation, getCurrentBudget } from "../finance/budget-service";
+import { processFinancialMessage } from "../services/financial-message";
 import { HELP_TEXT, sendTelegramMessage, START_TEXT } from "./bot";
 
 export async function handleTelegramMessage(
@@ -54,36 +50,27 @@ export async function handleTelegramMessage(
     );
     return;
   }
+  if (lower === "/chatid") {
+    await sendTelegramMessage(
+      chatId,
+      `🆔 <b>Your Telegram IDs</b>
 
-  const incomeMatch = trimmed.match(
-    /(?:income|earn|make|salary)\s*(?:is|:)?\s*([\d,]+)\s*(?:birr|etb)?/i,
-  );
-  if (incomeMatch) {
-    const income = Number(incomeMatch[1].replace(/,/g, ""));
-    if (income > 0) {
-      await updateUserIncome(user.id, income);
-      await upsertBudgetFromIncome(user.id, income);
-    }
-  }
+<b>Chat ID:</b> <code>${chatId}</code>
+<i>Used to send you messages in this chat.</i>
 
-  let expenseNote = "";
-  const extracted = await extractExpenseFromMessage(trimmed);
-  if (extracted) {
-    await logExpense(
-      user.id,
-      extracted.amount,
-      extracted.category,
-      extracted.description ?? trimmed,
+<b>User ID:</b> <code>${telegramUserId}</code>
+<i>Paste this in Smart Birr → Settings → Telegram to link your web account.</i>
+
+In a private chat with this bot, Chat ID and User ID are usually the same.`,
     );
-    expenseNote = `\n\n✅ Logged: ${formatBirr(extracted.amount)} — ${extracted.category}`;
+    return;
   }
 
-  const context = await getUserContext(user.id);
-  const reply = await financialCounselorReply(trimmed, context || undefined);
-  const fullReply = reply + expenseNote;
+  const { reply } = await processFinancialMessage(user.id, trimmed, {
+    channel: "telegram",
+  });
 
-  await saveConversation(user.id, trimmed, fullReply);
-  await sendTelegramMessage(chatId, fullReply);
+  await sendTelegramMessage(chatId, reply);
 }
 
 async function handleBudgetCommand(
@@ -132,7 +119,7 @@ async function handleSavingsCommand(chatId: number, userId: string) {
   const savingsTarget = Number(budget?.savingsGoal ?? 0);
   const savedSoFar = Math.max(0, income - totalSpent);
 
-  let msg = `💰 <b>Savings check</b>\n`;
+  let msg = "💰 <b>Savings check</b>\n";
   if (income) {
     msg += `Income: ${formatBirr(income)}\nSpent this month: ${formatBirr(totalSpent)}\nRough remaining: ${formatBirr(savedSoFar)}\n`;
     if (savingsTarget) {

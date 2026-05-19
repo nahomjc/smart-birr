@@ -43,6 +43,7 @@ export async function chatCompletion(
 export async function financialCounselorReply(
   userMessage: string,
   contextBlock?: string,
+  history: ChatMessage[] = [],
 ): Promise<string> {
   const systemContent = contextBlock
     ? `${FINANCIAL_COUNSELOR_SYSTEM}\n\n--- User financial context ---\n${contextBlock}`
@@ -50,6 +51,7 @@ export async function financialCounselorReply(
 
   return chatCompletion([
     { role: "system", content: systemContent },
+    ...history,
     { role: "user", content: userMessage },
   ]);
 }

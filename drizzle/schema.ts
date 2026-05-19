@@ -63,21 +63,6 @@ export const users = pgTable("users", {
 	unique("users_telegram_id_key").on(table.telegram_id),
 ]);
 
-export const categories = pgTable("categories", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	user_id: uuid(),
-	slug: text().notNull(),
-	name: text().notNull(),
-	sort_order: smallint().default(0).notNull(),
-}, (table) => [
-	uniqueIndex("categories_slug_user_idx").using("btree", table.slug.asc().nullsLast().op("text_ops"), table.user_id.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.user_id],
-			foreignColumns: [users.id],
-			name: "categories_user_id_fkey"
-		}).onDelete("cascade"),
-]);
-
 export const expenses = pgTable("expenses", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	user_id: uuid().notNull(),
@@ -87,6 +72,7 @@ export const expenses = pgTable("expenses", {
 	category_id: uuid().notNull(),
 	created_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updated_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	ai_confidence: numeric({ precision: 4, scale:  3 }),
 }, (table) => [
 	index("expenses_category_idx").using("btree", table.category_id.asc().nullsLast().op("uuid_ops")),
 	index("expenses_user_date_idx").using("btree", table.user_id.asc().nullsLast().op("timestamptz_ops"), table.date.asc().nullsLast().op("uuid_ops")),
@@ -101,6 +87,21 @@ export const expenses = pgTable("expenses", {
 			columns: [table.user_id],
 			foreignColumns: [users.id],
 			name: "expenses_user_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const categories = pgTable("categories", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	user_id: uuid(),
+	slug: text().notNull(),
+	name: text().notNull(),
+	sort_order: smallint().default(0).notNull(),
+}, (table) => [
+	uniqueIndex("categories_slug_user_idx").using("btree", table.slug.asc().nullsLast().op("text_ops"), table.user_id.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.user_id],
+			foreignColumns: [users.id],
+			name: "categories_user_id_fkey"
 		}).onDelete("cascade"),
 ]);
 

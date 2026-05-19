@@ -37,10 +37,20 @@ export async function sendTelegramMessage(
 }
 
 export async function setWebhook(url: string) {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+  const body: {
+    url: string;
+    allowed_updates: string[];
+    secret_token?: string;
+  } = { url, allowed_updates: ["message"] };
+  if (secret) {
+    body.secret_token = secret;
+  }
+
   const res = await fetch(`${TELEGRAM_API}${token()}/setWebhook`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, allowed_updates: ["message"] }),
+    body: JSON.stringify(body),
   });
   return res.json();
 }
@@ -54,6 +64,7 @@ export const HELP_TEXT = `🪙 <b>Smart Birr</b> — your AI finance coach
 /savings — Savings tips & goal check
 /report — This month's spending summary
 /expense — How to log expenses
+/chatid — Show your Telegram & chat IDs (for dashboard linking)
 
 <b>Natural chat</b>
 Just message me like a friend:

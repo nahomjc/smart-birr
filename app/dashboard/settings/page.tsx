@@ -1,4 +1,6 @@
 import { BudgetSettingsForm } from "@/components/settings/budget-settings-form";
+import { TelegramSettings } from "@/components/settings/telegram-settings";
+import { getTelegramProfileData } from "@/lib/data/profile";
 import { getBudgetSettingsData } from "@/lib/data/settings";
 import { theme } from "@/lib/theme";
 
@@ -12,9 +14,17 @@ export default async function SettingsPage() {
     emergencyFund: "",
     categoryLimits: [] as { name: string; limit: string }[],
   };
+  let telegramProfile = {
+    telegramId: null as string | null,
+    email: null as string | null,
+    name: null as string | null,
+  };
 
   try {
-    initial = await getBudgetSettingsData();
+    [initial, telegramProfile] = await Promise.all([
+      getBudgetSettingsData(),
+      getTelegramProfileData(),
+    ]);
   } catch {
     /* DB unavailable */
   }
@@ -29,6 +39,7 @@ export default async function SettingsPage() {
           as a starting point.
         </p>
       </div>
+      <TelegramSettings profile={telegramProfile} />
       <BudgetSettingsForm initial={initial} />
     </div>
   );

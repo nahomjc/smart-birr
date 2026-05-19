@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
+import { MonthlyExportButton } from "@/components/dashboard/monthly-export-button";
 import { ExpenseList } from "@/components/expenses/expense-list";
+import { Card } from "@/components/ui/card";
 import { getSessionUserId } from "@/lib/auth/session";
 import { PlanningGoalsOverview } from "@/components/planning/planning-goals-overview";
 import { getDashboardOverview, formatBirr } from "@/lib/data/dashboard";
+import { isNearMonthEnd } from "@/lib/export/monthly-report-data";
 import { getPlanningDashboardSummary } from "@/lib/data/planning-goals";
+import { getCurrentPeriod } from "@/lib/finance/period";
 import { theme } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +48,9 @@ export default async function DashboardPage() {
       ? Math.min(100, Math.round((data.remaining / data.savingsGoal) * 100))
       : null;
 
+  const period = getCurrentPeriod();
+  const nearMonthEnd = isNearMonthEnd();
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -59,15 +65,45 @@ export default async function DashboardPage() {
               ` · Logged income: ${formatBirr(data.loggedIncome)}`}
           </p>
         </div>
-        {!data.hasBudget && (
-          <Link
-            href="/dashboard/settings"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
-          >
-            Set budget limits
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <MonthlyExportButton
+            periodLabel={data.periodLabel}
+            year={period.year}
+            month={period.month}
+            variant={nearMonthEnd ? "primary" : "secondary"}
+          />
+          {!data.hasBudget && (
+            <Link
+              href="/dashboard/settings"
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
+            >
+              Set budget limits
+            </Link>
+          )}
+        </div>
       </div>
+
+      {nearMonthEnd && (
+        <Card className="border-emerald-800/50 bg-emerald-950/25">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-medium text-emerald-200">
+                End of month report
+              </h2>
+              <p className={`mt-1 text-sm ${theme.subtext}`}>
+                Download your {data.periodLabel} Excel summary with expenses,
+                income, category totals, and planning goals.
+              </p>
+            </div>
+            <MonthlyExportButton
+              periodLabel={data.periodLabel}
+              year={period.year}
+              month={period.month}
+              variant="primary"
+            />
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

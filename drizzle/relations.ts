@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, planning_goals, planning_goal_contributions, categories, expenses, budgets, ai_conversations, budget_limits, income_entries, recurring_expenses, notifications } from "./schema";
+import { users, planning_goals, planning_goal_contributions, usersInAuth, categories, expenses, budgets, ai_conversations, budget_limits, income_entries, recurring_expenses, notifications } from "./schema";
 
 export const planning_goalsRelations = relations(planning_goals, ({one, many}) => ({
 	user: one(users, {
@@ -9,10 +9,14 @@ export const planning_goalsRelations = relations(planning_goals, ({one, many}) =
 	planning_goal_contributions: many(planning_goal_contributions),
 }));
 
-export const usersRelations = relations(users, ({many}) => ({
+export const usersRelations = relations(users, ({one, many}) => ({
 	planning_goals: many(planning_goals),
-	categories: many(categories),
+	usersInAuth: one(usersInAuth, {
+		fields: [users.auth_user_id],
+		references: [usersInAuth.id]
+	}),
 	expenses: many(expenses),
+	categories: many(categories),
 	budgets: many(budgets),
 	ai_conversations: many(ai_conversations),
 	income_entries: many(income_entries),
@@ -27,14 +31,8 @@ export const planning_goal_contributionsRelations = relations(planning_goal_cont
 	}),
 }));
 
-export const categoriesRelations = relations(categories, ({one, many}) => ({
-	user: one(users, {
-		fields: [categories.user_id],
-		references: [users.id]
-	}),
-	expenses: many(expenses),
-	budget_limits: many(budget_limits),
-	recurring_expenses: many(recurring_expenses),
+export const usersInAuthRelations = relations(usersInAuth, ({many}) => ({
+	users: many(users),
 }));
 
 export const expensesRelations = relations(expenses, ({one}) => ({
@@ -46,6 +44,16 @@ export const expensesRelations = relations(expenses, ({one}) => ({
 		fields: [expenses.user_id],
 		references: [users.id]
 	}),
+}));
+
+export const categoriesRelations = relations(categories, ({one, many}) => ({
+	expenses: many(expenses),
+	user: one(users, {
+		fields: [categories.user_id],
+		references: [users.id]
+	}),
+	budget_limits: many(budget_limits),
+	recurring_expenses: many(recurring_expenses),
 }));
 
 export const budgetsRelations = relations(budgets, ({one, many}) => ({

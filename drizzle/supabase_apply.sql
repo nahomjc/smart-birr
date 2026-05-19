@@ -276,5 +276,12 @@ ALTER TABLE public.planning_goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.planning_goal_contributions ENABLE ROW LEVEL SECURITY;
 
 -- -----------------------------------------------------------------------------
+-- 9. Expense AI confidence (see drizzle/0005_expense_ai_confidence.sql)
+-- -----------------------------------------------------------------------------
+
+ALTER TABLE public.expenses
+  ADD COLUMN IF NOT EXISTS ai_confidence numeric(4, 3);
+
+-- -----------------------------------------------------------------------------
 -- Done. Regenerate a budget in the app so budget_limits rows are created.
 -- -----------------------------------------------------------------------------

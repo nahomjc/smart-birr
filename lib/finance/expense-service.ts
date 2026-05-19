@@ -10,6 +10,7 @@ export async function logExpense(
   category: string,
   description?: string | null,
   date?: Date,
+  aiConfidence?: number | null,
 ) {
   const db = requireDb();
   const categoryName = normalizeCategory(category);
@@ -26,6 +27,8 @@ export async function logExpense(
       categoryId: categoryRow.id,
       amount: String(amount),
       description: description ?? null,
+      aiConfidence:
+        aiConfidence != null ? String(Math.min(1, Math.max(0, aiConfidence))) : null,
       date: date ?? now,
       updatedAt: now,
     })

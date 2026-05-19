@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { buildFinancialContextForUser } from "../ai/build-financial-context";
 import {
@@ -82,6 +82,44 @@ export async function getOrCreateUserFromAuth(
     })
     .returning();
   return created;
+}
+
+export async function unlinkTelegramId(userId: string) {
+  const db = requireDb();
+  await db
+    .update(users)
+    .set({ telegramId: null })
+    .where(eq(users.id, userId));
+}
+
+export async function linkTelegramId(
+  userId: string,
+  telegramId: number,
+): Promise<User> {
+  if (!Number.isInteger(telegramId) || telegramId <= 0) {
+    throw new Error("Enter a valid Telegram user ID from /chatid");
+  }
+
+  const db = requireDb();
+  const taken = await db.query.users.findFirst({
+    where: and(
+      eq(users.telegramId, telegramId),
+      ne(users.id, userId),
+    ),
+  });
+  if (taken) {
+    throw new Error(
+      "This Telegram ID is already linked to another account. Use the same Telegram account you used with the bot, or message /start in the bot first.",
+    );
+  }
+
+  const [updated] = await db
+    .update(users)
+    .set({ telegramId })
+    .where(eq(users.id, userId))
+    .returning();
+  if (!updated) throw new Error("User not found");
+  return updated;
 }
 
 export async function updateUserProfile(

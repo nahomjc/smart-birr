@@ -56,6 +56,8 @@ export const expenses = pgTable(
       .references(() => categories.id),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     description: text("description"),
+    /** 0–1 confidence when logged via AI (Telegram/web chat) */
+    aiConfidence: numeric("ai_confidence", { precision: 4, scale: 3 }),
     date: timestamp("date", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
