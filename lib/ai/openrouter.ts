@@ -1,8 +1,7 @@
 import OpenAI from "openai";
 import { FINANCIAL_COUNSELOR_SYSTEM } from "./prompts";
 
-const DEFAULT_MODEL =
-  process.env.OPENROUTER_MODEL ?? "openai/gpt-4.1-mini";
+const DEFAULT_MODEL = process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-chat";
 
 function getClient() {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -13,7 +12,8 @@ function getClient() {
     baseURL: "https://openrouter.ai/api/v1",
     apiKey,
     defaultHeaders: {
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://smart-birr.vercel.app",
+      "HTTP-Referer":
+        process.env.NEXT_PUBLIC_APP_URL ?? "https://smart-birr.vercel.app",
       "X-Title": "Smart Birr",
     },
   });

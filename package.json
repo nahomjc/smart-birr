@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "node scripts/patch-drizzle-introspect.mjs",
     "db:generate": "drizzle-kit generate",
+    "db:introspect": "node scripts/db-introspect.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },

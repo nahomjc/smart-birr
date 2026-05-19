@@ -17,5 +17,7 @@ export async function sendChatMessage(message: string): Promise<ChatResult> {
   const result = await processChatMessage(userId, text);
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/expenses");
+  revalidatePath("/dashboard/planning");
+  revalidatePath("/dashboard/budget");
   return result;
 }

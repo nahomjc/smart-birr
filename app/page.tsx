@@ -7,6 +7,8 @@ import { Pricing } from "@/components/landing/pricing";
 import { FooterCta } from "@/components/landing/footer-cta";
 import { theme } from "@/lib/theme";
 
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
     <div className={theme.page}>

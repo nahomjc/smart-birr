@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { DashboardNav } from "@/components/layout/nav";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { getSupabaseUser } from "@/lib/auth/session";
 import { Logo } from "@/components/landing/logo";
+import { theme } from "@/lib/theme";
 
 export default async function DashboardLayout({
   children,
@@ -14,7 +16,9 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-full bg-[#060d0b] text-zinc-100">
       <header className="border-b border-emerald-900/30 bg-[#0a1210]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:px-6">
+        <div
+          className={`${theme.dashboardShell} flex items-center justify-between py-4`}
+        >
           <Link href="/dashboard">
             <Logo light />
           </Link>
@@ -30,11 +34,12 @@ export default async function DashboardLayout({
             >
               Home
             </Link>
+            <NotificationBell />
             <SignOutButton />
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
+      <main className={`${theme.dashboardShell} py-8`}>
         <DashboardNav />
         <div className="mt-8">{children}</div>
       </main>

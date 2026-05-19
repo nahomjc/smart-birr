@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { getSessionUserId } from "@/lib/auth/session";
 import { getMonthlyExpenses } from "@/lib/users/service";
-import { requireDb, budgets } from "@/lib/db";
+import {
+  getBudgetAllocation,
+  getCurrentBudget,
+} from "@/lib/finance/budget-service";
 import { generateBudgetPlan, spendingSummary } from "@/lib/finance/budget-engine";
 
 export async function GET() {
@@ -13,16 +15,13 @@ export async function GET() {
     }
 
     const monthExpenses = await getMonthlyExpenses(userId);
-    const db = requireDb();
-    const budget = await db.query.budgets.findFirst({
-      where: eq(budgets.userId, userId),
-    });
-
+    const budget = await getCurrentBudget(userId);
+    const allocation = await getBudgetAllocation(userId);
     const plan = budget
       ? generateBudgetPlan(Number(budget.monthlyIncome))
       : null;
 
-    const summary = spendingSummary(monthExpenses, plan);
+    const summary = spendingSummary(monthExpenses, allocation);
 
     return NextResponse.json({
       expenses: monthExpenses,

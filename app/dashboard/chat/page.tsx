@@ -7,7 +7,8 @@ export default function ChatPage() {
       <div>
         <h1 className={`text-2xl ${theme.heading}`}>AI Financial Counselor</h1>
         <p className={`mt-1 text-sm ${theme.subtext}`}>
-          Ask for budgets, savings plans, or log spending in natural language.
+          Personalized advice using your budget, expenses, and planning goals —
+          or log spending in natural language.
         </p>
       </div>
       <ChatPanel />

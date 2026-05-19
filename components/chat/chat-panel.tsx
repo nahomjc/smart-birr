@@ -16,7 +16,7 @@ export function ChatPanel() {
     {
       role: "assistant",
       content:
-        "Hi! I'm Smart Birr, your AI financial counselor. Ask about budgeting, saving, or log spending — e.g. \"Spent 500 birr on lunch\".",
+        "Hi! I'm Smart Birr, your AI financial counselor. I can see your budget, expenses, and planning goals. Ask for advice, or log spending — e.g. \"Spent 500 birr on lunch\" or \"Can I afford a laptop this year?\"",
     },
   ]);
   const [input, setInput] = useState("");

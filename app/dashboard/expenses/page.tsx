@@ -23,8 +23,17 @@ export default async function ExpensesPage() {
     <div className="space-y-8">
       <div>
         <h1 className={`text-2xl ${theme.heading}`}>Expenses</h1>
-        <p className={`mt-1 text-sm ${theme.subtext}`}>
-          Track spending by category this month.
+        <p className={`mt-1 max-w-2xl text-sm ${theme.subtext}`}>
+          This page lists money you have already spent — not your budget plan.
+          Budget limits live under{" "}
+          <a href="/dashboard/budget" className="text-emerald-400 hover:underline">
+            Budget
+          </a>
+          ; totals and alerts are on{" "}
+          <a href="/dashboard" className="text-emerald-400 hover:underline">
+            Overview
+          </a>
+          .
         </p>
       </div>
       <Card>

@@ -1,3 +1,5 @@
+import type { ExpenseCategory } from "./categories";
+
 export type BudgetAllocation = {
   monthlyIncome: number;
   savingsGoal: number;
@@ -7,25 +9,51 @@ export type BudgetAllocation = {
   entertainmentLimit: number;
   emergencyFund: number;
   discretionary: number;
+  categoryLimits: Record<string, number>;
+};
+
+export type BudgetPlanWithLimits = BudgetAllocation;
+
+/** Expense category shares (70% of income); savings 20% + emergency 10% = 100% */
+const CATEGORY_SHARES: Record<ExpenseCategory, number> = {
+  Food: 0.15,
+  Transport: 0.1,
+  Rent: 0.3,
+  Subscriptions: 0.03,
+  Shopping: 0.03,
+  Utilities: 0.02,
+  Healthcare: 0.01,
+  Education: 0.01,
+  Entertainment: 0.05,
+  Other: 0,
 };
 
 /** 50/30/20-inspired plan tuned for Ethiopian birr budgets */
-export function generateBudgetPlan(monthlyIncome: number): BudgetAllocation {
+export function generateBudgetPlan(monthlyIncome: number): BudgetPlanWithLimits {
   const income = Math.max(0, monthlyIncome);
   const savingsGoal = Math.round(income * 0.2);
-  const rentLimit = Math.round(income * 0.3);
-  const foodLimit = Math.round(income * 0.15);
-  const transportLimit = Math.round(income * 0.1);
-  const entertainmentLimit = Math.round(income * 0.05);
   const emergencyFund = Math.round(income * 0.1);
-  const allocated =
-    savingsGoal +
-    rentLimit +
-    foodLimit +
-    transportLimit +
-    entertainmentLimit +
-    emergencyFund;
-  const discretionary = Math.max(0, income - allocated);
+
+  const categoryLimits: Record<string, number> = {};
+  let categoryTotal = 0;
+
+  for (const [name, share] of Object.entries(CATEGORY_SHARES)) {
+    const limit = Math.round(income * share);
+    categoryLimits[name] = limit;
+    categoryTotal += limit;
+  }
+
+  const rentLimit = categoryLimits.Rent;
+  const foodLimit = categoryLimits.Food;
+  const transportLimit = categoryLimits.Transport;
+  const entertainmentLimit = categoryLimits.Entertainment;
+  const discretionary = Math.max(
+    0,
+    income - savingsGoal - emergencyFund - categoryTotal,
+  );
+  if (discretionary > 0) {
+    categoryLimits.Other = (categoryLimits.Other ?? 0) + discretionary;
+  }
 
   return {
     monthlyIncome: income,
@@ -36,6 +64,7 @@ export function generateBudgetPlan(monthlyIncome: number): BudgetAllocation {
     entertainmentLimit,
     emergencyFund,
     discretionary,
+    categoryLimits,
   };
 }
 
@@ -44,7 +73,7 @@ export function formatBirr(amount: number, currency = "ETB"): string {
 }
 
 export function spendingSummary(
-  expenses: { amount: string; category: string }[],
+  expenses: { amount: string; category: { name: string } }[],
   budget?: BudgetAllocation | null,
 ) {
   const byCategory: Record<string, number> = {};
@@ -52,23 +81,27 @@ export function spendingSummary(
   for (const e of expenses) {
     const amt = Number(e.amount);
     total += amt;
-    byCategory[e.category] = (byCategory[e.category] ?? 0) + amt;
+    const name = e.category.name;
+    byCategory[name] = (byCategory[name] ?? 0) + amt;
   }
+
   const warnings: string[] = [];
-  if (budget) {
-    if ((byCategory.Food ?? 0) > budget.foodLimit) {
+  const limits = budget?.categoryLimits ?? {};
+  if (budget && Object.keys(limits).length === 0) {
+    limits.Food = budget.foodLimit;
+    limits.Transport = budget.transportLimit;
+    limits.Rent = budget.rentLimit;
+    limits.Entertainment = budget.entertainmentLimit;
+  }
+
+  for (const [category, limit] of Object.entries(limits)) {
+    const spent = byCategory[category] ?? 0;
+    if (limit > 0 && spent > limit) {
       warnings.push(
-        `Food spending (${formatBirr(byCategory.Food ?? 0)}) exceeds your food budget (${formatBirr(budget.foodLimit)}).`,
+        `${category} spending (${formatBirr(spent)}) exceeds your ${category.toLowerCase()} budget (${formatBirr(limit)}).`,
       );
-    }
-    if ((byCategory.Transport ?? 0) > budget.transportLimit) {
-      warnings.push(
-        `Transport spending exceeds your transport budget.`,
-      );
-    }
-    if ((byCategory.Rent ?? 0) > budget.rentLimit) {
-      warnings.push(`Rent/housing spending exceeds your rent allocation.`);
     }
   }
+
   return { total, byCategory, warnings };
 }

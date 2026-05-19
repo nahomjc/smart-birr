@@ -1,10 +1,11 @@
-import { Card } from "@/components/ui/card";
 import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
+import { ExpenseList } from "@/components/expenses/expense-list";
 import { getSessionUserId } from "@/lib/auth/session";
-import { getUserById, getMonthlyExpenses } from "@/lib/users/service";
-import { requireDb, budgets } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { formatBirr, spendingSummary } from "@/lib/finance/budget-engine";
+import { PlanningGoalsOverview } from "@/components/planning/planning-goals-overview";
+import { getDashboardOverview, formatBirr } from "@/lib/data/dashboard";
+import { getPlanningDashboardSummary } from "@/lib/data/planning-goals";
 import { theme } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
@@ -13,95 +14,162 @@ export default async function DashboardPage() {
   const userId = await getSessionUserId();
   if (!userId) return null;
 
-  let summary = { total: 0, byCategory: {} as Record<string, number>, warnings: [] as string[] };
-  let userName = "there";
-  let income: number | null = null;
+  let data: Awaited<ReturnType<typeof getDashboardOverview>> | null = null;
+  let planningSummary: Awaited<
+    ReturnType<typeof getPlanningDashboardSummary>
+  > | null = null;
 
   try {
-    const user = await getUserById(userId);
-    userName = user?.name ?? "there";
-    income = user?.income ? Number(user.income) : null;
-    const expenses = await getMonthlyExpenses(userId);
-    const db = requireDb();
-    const budget = await db.query.budgets.findFirst({
-      where: eq(budgets.userId, userId),
-    });
-    summary = spendingSummary(
-      expenses,
-      budget
-        ? {
-            monthlyIncome: Number(budget.monthlyIncome),
-            savingsGoal: Number(budget.savingsGoal),
-            rentLimit: Number(budget.rentLimit),
-            foodLimit: Number(budget.foodLimit),
-            transportLimit: Number(budget.transportLimit),
-            entertainmentLimit: Number(budget.entertainmentLimit),
-            emergencyFund: Number(budget.emergencyFund),
-            discretionary: 0,
-          }
-        : null,
-    );
+    data = await getDashboardOverview(userId);
+    planningSummary = await getPlanningDashboardSummary(userId);
   } catch {
     /* DB may be unavailable during first setup */
   }
 
+  if (!data) {
+    return (
+      <div className="space-y-4">
+        <h1 className={`text-2xl ${theme.heading}`}>Overview</h1>
+        <Card>
+          <p className={`text-sm ${theme.subtext}`}>
+            Connect your database and run the Supabase migration to see your
+            financial snapshot.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const savingsProgress =
+    data.savingsGoal && data.savingsGoal > 0 && data.remaining != null
+      ? Math.min(100, Math.round((data.remaining / data.savingsGoal) * 100))
+      : null;
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className={`text-2xl ${theme.heading}`}>Hello, {userName}</h1>
-        <p className={`mt-1 ${theme.subtext}`}>
-          {income
-            ? `Monthly income: ${formatBirr(income)}`
-            : "Set your income in Budget or chat with the AI counselor."}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className={`text-sm ${theme.subtext}`}>{data.periodLabel}</p>
+          <h1 className={`text-2xl ${theme.heading}`}>Hello, {data.userName}</h1>
+          <p className={`mt-1 text-sm ${theme.subtext}`}>
+            {data.hasBudget
+              ? `Monthly budget: ${formatBirr(data.budgetIncome ?? 0)}`
+              : "No budget for this month yet."}
+            {data.loggedIncome > 0 &&
+              ` · Logged income: ${formatBirr(data.loggedIncome)}`}
+          </p>
+        </div>
+        {!data.hasBudget && (
+          <Link
+            href="/dashboard/settings"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
+          >
+            Set budget limits
+          </Link>
+        )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <p className={`text-sm ${theme.subtext}`}>Spent this month</p>
           <p className="mt-1 text-2xl font-semibold text-emerald-400">
-            {formatBirr(summary.total)}
+            {formatBirr(data.totalSpent)}
           </p>
         </Card>
         <Card>
-          <p className={`text-sm ${theme.subtext}`}>Categories tracked</p>
+          <p className={`text-sm ${theme.subtext}`}>Remaining</p>
           <p className="mt-1 text-2xl font-semibold text-zinc-100">
-            {Object.keys(summary.byCategory).length}
+            {data.remaining != null ? formatBirr(data.remaining) : "—"}
           </p>
         </Card>
         <Card>
-          <p className={`text-sm ${theme.subtext}`}>Budget alerts</p>
+          <p className={`text-sm ${theme.subtext}`}>Savings goal</p>
           <p className="mt-1 text-2xl font-semibold text-zinc-100">
-            {summary.warnings.length}
+            {data.savingsGoal != null ? formatBirr(data.savingsGoal) : "—"}
           </p>
+          {savingsProgress != null && (
+            <p className={`mt-1 text-xs ${theme.subtext}`}>
+              ~{savingsProgress}% of goal from remaining cash
+            </p>
+          )}
+        </Card>
+        <Card>
+          <p className={`text-sm ${theme.subtext}`}>Recurring bills</p>
+          <p className="mt-1 text-2xl font-semibold text-zinc-100">
+            {data.recurringCount}
+          </p>
+          <p className={`mt-1 text-xs ${theme.subtext}`}>active schedules</p>
         </Card>
       </div>
 
-      {summary.warnings.length > 0 && (
+      {data.warnings.length > 0 && (
         <Card className="border-amber-900/40 bg-amber-950/30">
-          <p className="text-sm font-medium text-amber-200">
-            {summary.warnings.join(" ")}
-          </p>
+          <h2 className="mb-2 text-sm font-medium text-amber-200">
+            Budget alerts
+          </h2>
+          <ul className="list-inside list-disc space-y-1 text-sm text-amber-100/90">
+            {data.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/dashboard/chat"
-          className={`${theme.cardHover} block`}
-        >
-          <h2 className="font-semibold text-zinc-100">AI Counselor</h2>
-          <p className={`mt-1 text-sm ${theme.subtext}`}>
-            Budget help, savings plans, and natural expense logging.
-          </p>
-        </Link>
-        <Link
-          href="/dashboard/expenses"
-          className={`${theme.cardHover} block`}
-        >
+      {planningSummary && (
+        <PlanningGoalsOverview summary={planningSummary} />
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CategoryBreakdown rows={data.categoryRows} />
+        <Card>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-medium text-zinc-100">Recent expenses</h2>
+            <Link
+              href="/dashboard/expenses"
+              className="text-sm text-emerald-400 hover:text-emerald-300"
+            >
+              View all
+            </Link>
+          </div>
+          <ExpenseList expenses={data.recentExpenses} />
+        </Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+        <Link href="/dashboard/expenses" className={`${theme.cardHover} block`}>
           <h2 className="font-semibold text-zinc-100">Expenses</h2>
           <p className={`mt-1 text-sm ${theme.subtext}`}>
-            Track food, transport, rent, and more.
+            Log spending by category.
+          </p>
+        </Link>
+        <Link href="/dashboard/calendar" className={`${theme.cardHover} block`}>
+          <h2 className="font-semibold text-zinc-100">Calendar</h2>
+          <p className={`mt-1 text-sm ${theme.subtext}`}>
+            Daily expenses, income, and due dates.
+          </p>
+        </Link>
+        <Link href="/dashboard/settings" className={`${theme.cardHover} block`}>
+          <h2 className="font-semibold text-zinc-100">Settings</h2>
+          <p className={`mt-1 text-sm ${theme.subtext}`}>
+            Set income and category limits yourself.
+          </p>
+        </Link>
+        <Link href="/dashboard/budget" className={`${theme.cardHover} block`}>
+          <h2 className="font-semibold text-zinc-100">Budget</h2>
+          <p className={`mt-1 text-sm ${theme.subtext}`}>
+            View your saved monthly plan.
+          </p>
+        </Link>
+        <Link href="/dashboard/planning" className={`${theme.cardHover} block`}>
+          <h2 className="font-semibold text-zinc-100">Planning</h2>
+          <p className={`mt-1 text-sm ${theme.subtext}`}>
+            Save toward laptops, trips, and big purchases.
+          </p>
+        </Link>
+        <Link href="/dashboard/chat" className={`${theme.cardHover} block`}>
+          <h2 className="font-semibold text-zinc-100">AI Counselor</h2>
+          <p className={`mt-1 text-sm ${theme.subtext}`}>
+            Ask questions or log expenses in chat.
           </p>
         </Link>
       </div>

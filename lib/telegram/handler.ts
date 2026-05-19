@@ -14,8 +14,7 @@ import {
   getMonthlyExpenses,
   updateUserIncome,
 } from "../users/service";
-import { requireDb, budgets } from "../db";
-import { eq } from "drizzle-orm";
+import { getBudgetAllocation, getCurrentBudget } from "../finance/budget-service";
 import { HELP_TEXT, sendTelegramMessage, START_TEXT } from "./bot";
 
 export async function handleTelegramMessage(
@@ -92,10 +91,7 @@ async function handleBudgetCommand(
   userId: string,
   incomeStr: string | null,
 ) {
-  const db = requireDb();
-  const budget = await db.query.budgets.findFirst({
-    where: eq(budgets.userId, userId),
-  });
+  const budget = await getCurrentBudget(userId);
 
   if (!budget && !incomeStr) {
     await sendTelegramMessage(
@@ -129,10 +125,7 @@ async function handleBudgetCommand(
 }
 
 async function handleSavingsCommand(chatId: number, userId: string) {
-  const db = requireDb();
-  const budget = await db.query.budgets.findFirst({
-    where: eq(budgets.userId, userId),
-  });
+  const budget = await getCurrentBudget(userId);
   const monthExpenses = await getMonthlyExpenses(userId);
   const totalSpent = monthExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const income = Number(budget?.monthlyIncome ?? 0);
@@ -162,24 +155,11 @@ async function handleReportCommand(chatId: number, userId: string) {
     return;
   }
 
-  const db = requireDb();
-  const budget = await db.query.budgets.findFirst({
-    where: eq(budgets.userId, userId),
-  });
-  const plan = budget
-    ? {
-        monthlyIncome: Number(budget.monthlyIncome),
-        savingsGoal: Number(budget.savingsGoal),
-        rentLimit: Number(budget.rentLimit),
-        foodLimit: Number(budget.foodLimit),
-        transportLimit: Number(budget.transportLimit),
-        entertainmentLimit: Number(budget.entertainmentLimit),
-        emergencyFund: Number(budget.emergencyFund),
-        discretionary: 0,
-      }
-    : null;
-
-  const { total, byCategory, warnings } = spendingSummary(monthExpenses, plan);
+  const allocation = await getBudgetAllocation(userId);
+  const { total, byCategory, warnings } = spendingSummary(
+    monthExpenses,
+    allocation,
+  );
 
   let msg = `📈 <b>Monthly report</b>\nTotal: ${formatBirr(total)}\n\n`;
   for (const [cat, amt] of Object.entries(byCategory).sort((a, b) => b[1] - a[1])) {

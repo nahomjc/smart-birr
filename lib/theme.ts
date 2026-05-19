@@ -15,4 +15,6 @@ export const theme = {
   navActive: "rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white",
   navIdle:
     "rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 transition hover:bg-emerald-950/50 hover:text-emerald-300",
+  /** Dashboard shell — full width with comfortable side padding */
+  dashboardShell: "w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-14",
 } as const;

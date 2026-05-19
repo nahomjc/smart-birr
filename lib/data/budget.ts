@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
-import { requireDb, budgets } from "@/lib/db";
-import { generateBudgetPlan, type BudgetAllocation } from "@/lib/finance/budget-engine";
+import { getBudgetAllocation } from "@/lib/finance/budget-service";
+import { getCurrentPeriod } from "@/lib/finance/period";
+import type { BudgetAllocation } from "@/lib/finance/budget-engine";
 import { requireUserId } from "@/lib/auth/require-user";
 
 export type BudgetPageData = {
-  monthlyIncome: string;
+  periodLabel: string;
   plan: BudgetAllocation | null;
 };
 
@@ -12,18 +12,12 @@ export async function getBudgetPageData(
   userId?: string,
 ): Promise<BudgetPageData> {
   const id = userId ?? (await requireUserId());
-  const db = requireDb();
-  const budget = await db.query.budgets.findFirst({
-    where: eq(budgets.userId, id),
-  });
+  const period = getCurrentPeriod();
+  const periodLabel = new Date(period.year, period.month - 1, 1).toLocaleDateString(
+    "en-ET",
+    { month: "long", year: "numeric" },
+  );
+  const plan = await getBudgetAllocation(id);
 
-  if (!budget) {
-    return { monthlyIncome: "", plan: null };
-  }
-
-  const income = Number(budget.monthlyIncome);
-  return {
-    monthlyIncome: String(income),
-    plan: generateBudgetPlan(income),
-  };
+  return { periodLabel, plan };
 }
