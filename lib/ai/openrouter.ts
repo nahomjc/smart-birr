@@ -1,10 +1,16 @@
 import OpenAI from "openai";
 import { FINANCIAL_COUNSELOR_SYSTEM } from "./prompts";
 
-const DEFAULT_MODEL = process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-chat";
+const FALLBACK_MODEL = "deepseek/deepseek-chat";
+
+function resolveModel(override?: string): string {
+  const raw = override ?? process.env.OPENROUTER_MODEL;
+  const trimmed = raw?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : FALLBACK_MODEL;
+}
 
 function getClient() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured.");
   }
@@ -30,7 +36,7 @@ export async function chatCompletion(
 ): Promise<string> {
   const client = getClient();
   const completion = await client.chat.completions.create({
-    model: options?.model ?? DEFAULT_MODEL,
+    model: resolveModel(options?.model),
     max_tokens: options?.maxTokens ?? 800,
     messages: messages.map((m) => ({
       role: m.role,
@@ -66,7 +72,10 @@ export async function jsonCompletion<T>(
       { role: "system", content: systemPrompt },
       { role: "user", content: userMessage },
     ],
-    { model: options?.model ?? "google/gemini-2.0-flash-001", maxTokens: 256 },
+    {
+      model: resolveModel(options?.model ?? "google/gemini-2.0-flash-001"),
+      maxTokens: 256,
+    },
   );
   try {
     const cleaned = raw.replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
