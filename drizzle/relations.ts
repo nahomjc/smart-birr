@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, planning_goals, planning_goal_contributions, usersInAuth, categories, expenses, budgets, ai_conversations, budget_limits, income_entries, recurring_expenses, notifications } from "./schema";
+import { users, planning_goals, planning_goal_contributions, categories, expenses, budgets, ai_conversations, budget_limits, income_entries, recurring_expenses, notifications } from "./schema";
 
 export const planning_goalsRelations = relations(planning_goals, ({one, many}) => ({
 	user: one(users, {
@@ -9,12 +9,8 @@ export const planning_goalsRelations = relations(planning_goals, ({one, many}) =
 	planning_goal_contributions: many(planning_goal_contributions),
 }));
 
-export const usersRelations = relations(users, ({one, many}) => ({
+export const usersRelations = relations(users, ({many}) => ({
 	planning_goals: many(planning_goals),
-	usersInAuth: one(usersInAuth, {
-		fields: [users.auth_user_id],
-		references: [usersInAuth.id]
-	}),
 	expenses: many(expenses),
 	categories: many(categories),
 	budgets: many(budgets),
@@ -29,10 +25,6 @@ export const planning_goal_contributionsRelations = relations(planning_goal_cont
 		fields: [planning_goal_contributions.goal_id],
 		references: [planning_goals.id]
 	}),
-}));
-
-export const usersInAuthRelations = relations(usersInAuth, ({many}) => ({
-	users: many(users),
 }));
 
 export const expensesRelations = relations(expenses, ({one}) => ({
