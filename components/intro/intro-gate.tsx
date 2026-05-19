@@ -11,7 +11,6 @@ const EXIT_MS_REDUCED = 280;
 type Phase = "playing" | "exiting" | "done";
 
 function shouldSkipIntro(): boolean {
-  if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).has("skip-intro");
 }
 
@@ -19,16 +18,10 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function removeBootstrapSplash(): void {
-  document.getElementById("intro-bootstrap")?.remove();
-}
-
 export function IntroGate({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<Phase>("playing");
 
   useLayoutEffect(() => {
-    removeBootstrapSplash();
-
     if (shouldSkipIntro()) {
       setPhase("done");
       return;
@@ -63,13 +56,12 @@ export function IntroGate({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {showLoader ? (
-        <IntroLoader key={phase} exiting={phase === "exiting"} />
-      ) : null}
+      {showLoader ? <IntroLoader exiting={phase === "exiting"} /> : null}
       <div
         className="flex min-h-0 flex-1 flex-col"
+        inert={showLoader ? true : undefined}
         aria-hidden={showLoader || undefined}
-        hidden={showLoader || undefined}
+        style={showLoader ? { visibility: "hidden" } : undefined}
       >
         {children}
       </div>
