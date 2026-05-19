@@ -24,9 +24,7 @@ export default async function DashboardLayout({
         <div
           className={`${theme.dashboardShell} flex items-center justify-between py-4`}
         >
-          <Link href="/dashboard">
-            <Logo light />
-          </Link>
+          <Logo light />
           <div className="flex items-center gap-4">
             {authUser?.email && (
               <span className="hidden text-sm text-zinc-500 sm:inline">

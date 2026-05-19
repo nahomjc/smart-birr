@@ -8,8 +8,8 @@ type Props = {
 export function IntroSplashView({ exiting = false }: Props) {
   return (
     <>
-      <div className="intro-ambient intro-ambient--purple" />
-      <div className="intro-ambient intro-ambient--emerald" />
+      <div className="intro-ambient intro-ambient--primary" />
+      <div className="intro-ambient intro-ambient--secondary" />
 
       <div className={`intro-stage ${exiting ? "intro-stage--exit" : ""}`}>
         <IntroRings />

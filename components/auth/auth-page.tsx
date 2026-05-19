@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
 import { Logo } from "@/components/landing/logo";
 import { LoginForm } from "./login-form";
 import { SignupForm } from "./signup-form";
@@ -26,9 +25,7 @@ export function AuthPage({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_40%,rgba(52,211,153,0.18),transparent_70%)]"
         />
 
-        <Link href="/" className="relative z-10">
-          <Logo light />
-        </Link>
+        <Logo light className="relative z-10" />
 
         <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
           {error && (

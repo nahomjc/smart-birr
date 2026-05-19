@@ -18,16 +18,16 @@ export function IntroRings() {
             x2="100%"
             y2="100%"
           >
-            <stop offset="0%" stopColor="#e9d5ff" />
-            <stop offset="25%" stopColor="#a855f7" />
+            <stop offset="0%" stopColor="#d1fae5" />
+            <stop offset="25%" stopColor="#6ee7b7" />
             <stop offset="50%" stopColor="#34d399" />
-            <stop offset="75%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#c084fc" />
+            <stop offset="75%" stopColor="#14b8a6" />
+            <stop offset="100%" stopColor="#10b981" />
           </linearGradient>
           <radialGradient id="intro-core-grad" cx="35%" cy="35%" r="65%">
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="45%" stopColor="#c084fc" />
-            <stop offset="100%" stopColor="#6d28d9" />
+            <stop offset="45%" stopColor="#6ee7b7" />
+            <stop offset="100%" stopColor="#10b981" />
           </radialGradient>
           <filter
             id="intro-ring-glow"
