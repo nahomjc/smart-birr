@@ -9,6 +9,10 @@ import {
   type TelegramLinkState,
 } from "@/app/actions/telegram";
 import type { TelegramProfileData } from "@/lib/data/profile";
+import {
+  TELEGRAM_BOT_HANDLE,
+  TELEGRAM_BOT_URL,
+} from "@/components/landing/constants";
 import { theme } from "@/lib/theme";
 
 type Props = {
@@ -32,8 +36,16 @@ export function TelegramSettings({ profile }: Props) {
       <h2 className="mb-1 font-medium text-zinc-100">Telegram</h2>
       <p className={`mb-4 text-sm ${theme.subtext}`}>
         Link your Telegram account for bot commands, nightly summaries, and
-        budget alerts. In Telegram, message the bot{" "}
-        <code className="text-emerald-400/90">/chatid</code> and copy your{" "}
+        budget alerts. Open{" "}
+        <a
+          href={TELEGRAM_BOT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-[#5bc8f5] underline-offset-2 hover:underline"
+        >
+          {TELEGRAM_BOT_HANDLE}
+        </a>
+        , message <code className="text-emerald-400/90">/chatid</code>, and copy your{" "}
         <strong className="text-zinc-300">User ID</strong> here. If you already
         used the bot before signing up on the web, linking will merge that bot
         history into this account.

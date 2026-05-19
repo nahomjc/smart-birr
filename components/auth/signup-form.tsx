@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { signUp, type AuthActionState } from "@/app/actions/auth";
 import { authInput, authLabel, authSubmit } from "./auth-styles";
+import { PasswordInput } from "./password-input";
 import { SocialButtons } from "./social-buttons";
 
 export function SignupForm() {
+  const passwordId = useId();
   const [state, action, pending] = useActionState<AuthActionState, FormData>(
     signUp,
     null,
@@ -37,16 +39,14 @@ export function SignupForm() {
             className={authInput}
           />
         </label>
-        <label className="block">
+        <label htmlFor={passwordId} className="block">
           <span className={authLabel}>Password</span>
-          <input
-            name="password"
-            type="password"
+          <PasswordInput
+            id={passwordId}
             required
             minLength={6}
             autoComplete="new-password"
             placeholder="Min. 6 characters"
-            className={authInput}
           />
         </label>
         <label className="block">

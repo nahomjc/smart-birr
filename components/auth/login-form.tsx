@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn, type AuthActionState } from "@/app/actions/auth";
 import { authInput, authLabel, authSubmit } from "./auth-styles";
+import { PasswordInput } from "./password-input";
 import { SocialButtons } from "./social-buttons";
 
 export function LoginForm() {
+  const passwordId = useId();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "";
   const [state, action, pending] = useActionState<AuthActionState, FormData>(
@@ -31,15 +33,13 @@ export function LoginForm() {
             className={authInput}
           />
         </label>
-        <label className="block">
+        <label htmlFor={passwordId} className="block">
           <span className={authLabel}>Password</span>
-          <input
-            name="password"
-            type="password"
+          <PasswordInput
+            id={passwordId}
             required
             autoComplete="current-password"
             placeholder="••••••••"
-            className={authInput}
           />
         </label>
         <div className="flex justify-end">

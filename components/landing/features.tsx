@@ -1,6 +1,7 @@
 "use client";
 
-import { Bot, FileText, Shield, Sparkles } from "lucide-react";
+import { FileText, Shield, Sparkles } from "lucide-react";
+import { TelegramBotFeature } from "./telegram-bot-feature";
 import { motion } from "framer-motion";
 import { AnimatedBar } from "./animated-bar";
 
@@ -122,33 +123,12 @@ export function Features() {
             </ul>
           </motion.article>
 
-          <motion.article
-            className={`${card} lg:col-span-2`}
-            variants={fadeUp}
-            whileHover={{ y: -2 }}
-          >
-            <motion.div
-              className="flex items-start gap-3"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={viewportOnce}
-            >
-              <Bot className="h-5 w-5 shrink-0 text-emerald-400" />
-              <div>
-                <p className="text-sm font-semibold text-zinc-100">AI Fraud Guard</p>
-                <motion.p
-                  className="mt-2 rounded-lg border border-amber-900/40 bg-amber-950/40 px-3 py-2 text-xs text-amber-200/90"
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={viewportOnce}
-                  transition={{ delay: 0.25, duration: 0.5 }}
-                >
-                  System alert: Food spending is 18% over your monthly limit.
-                </motion.p>
-              </div>
-            </motion.div>
-          </motion.article>
+          <TelegramBotFeature variant="card" className="lg:col-span-2" />
         </motion.div>
+
+        <div className="mt-10">
+          <TelegramBotFeature variant="banner" />
+        </div>
       </article>
     </section>
   );

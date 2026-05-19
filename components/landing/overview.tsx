@@ -3,14 +3,20 @@
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { DashboardMockup } from "./dashboard-mockup";
-import { landingContainer } from "./constants";
+import { landingContainer, TELEGRAM_BOT_HANDLE, TELEGRAM_BOT_URL } from "./constants";
+import { TelegramBotFeature } from "./telegram-bot-feature";
 import { fadeUp, staggerContainer, viewportOnce } from "./motion";
 import { theme } from "@/lib/theme";
 
 const bullets = [
-  "Unified dashboard for income, budgets, and expenses",
-  "Seamless Telegram bot — log spending in chat",
-  "Mobile-ready web app with Supabase auth",
+  { id: "dashboard", text: "Unified dashboard for income, budgets, and expenses" },
+  {
+    id: "telegram",
+    text: "Seamless Telegram bot — log spending in chat",
+    href: TELEGRAM_BOT_URL,
+    highlight: true,
+  },
+  { id: "auth", text: "Mobile-ready web app with Supabase auth" },
 ];
 
 export function ProductOverview() {
@@ -39,21 +45,59 @@ export function ProductOverview() {
             you can save more and stress less.
           </motion.p>
           <motion.ul className="mt-8 space-y-4" variants={staggerContainer}>
-            {bullets.map((item, i) => (
-              <motion.li
-                key={item}
-                className="flex gap-3 text-sm text-zinc-300"
-                variants={fadeUp}
-                transition={{ delay: i * 0.08 }}
-                whileHover={{ x: 4 }}
-              >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-900/50 text-emerald-400">
-                  <Check className="h-3.5 w-3.5" />
-                </span>
-                {item}
-              </motion.li>
-            ))}
+            {bullets.map((item, i) => {
+              const content = (
+                <>
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                      item.highlight
+                        ? "bg-[#2AABEE]/20 text-[#5bc8f5] ring-1 ring-[#2AABEE]/30"
+                        : "bg-emerald-900/50 text-emerald-400"
+                    }`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </span>
+                  <span className={item.highlight ? "text-zinc-100" : undefined}>
+                    {item.text}
+                    {item.highlight ? (
+                      <span className="mt-0.5 block font-mono text-xs text-[#5bc8f5]">
+                        {TELEGRAM_BOT_HANDLE}
+                      </span>
+                    ) : null}
+                  </span>
+                </>
+              );
+
+              return (
+                <motion.li
+                  key={item.id}
+                  variants={fadeUp}
+                  transition={{ delay: i * 0.08 }}
+                  whileHover={{ x: 4 }}
+                >
+                  {item.href ? (
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex gap-3 rounded-lg border border-transparent py-1 text-sm text-zinc-300 transition hover:border-[#2AABEE]/25 hover:bg-[#2AABEE]/5"
+                    >
+                      {content}
+                    </a>
+                  ) : (
+                    <span className="flex gap-3 text-sm text-zinc-300">{content}</span>
+                  )}
+                </motion.li>
+              );
+            })}
           </motion.ul>
+          <motion.div
+            className="mt-8"
+            variants={fadeUp}
+            transition={{ delay: 0.25 }}
+          >
+            <TelegramBotFeature variant="pill" />
+          </motion.div>
         </motion.header>
         <motion.div
           initial={{ opacity: 0, x: 40 }}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Logo } from "./logo";
 import { landingContainer } from "./constants";
+import { TelegramBotFeature } from "./telegram-bot-feature";
 import { fadeUp, viewportOnce } from "./motion";
 import { theme } from "@/lib/theme";
 
@@ -35,13 +36,19 @@ export function FooterCta() {
             Start free with Smart Birr — budget in birr, track expenses, and chat
             with your AI counselor today.
           </motion.p>
-          <motion.div variants={fadeUp} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-            <Link
-              href="/login"
-              className="mt-8 inline-flex rounded-full bg-emerald-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/40 transition hover:bg-emerald-500"
-            >
-              Get started free
-            </Link>
+          <motion.div
+            className="mt-8 flex flex-wrap items-center justify-center gap-3"
+            variants={fadeUp}
+          >
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+              <Link
+                href="/login"
+                className="inline-flex rounded-full bg-emerald-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/40 transition hover:bg-emerald-500"
+              >
+                Get started free
+              </Link>
+            </motion.div>
+            <TelegramBotFeature variant="pill" />
           </motion.div>
         </motion.article>
       </section>

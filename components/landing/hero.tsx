@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { DashboardMockup } from "./dashboard-mockup";
+import { TelegramBotFeature } from "./telegram-bot-feature";
 import { landingContainer } from "./constants";
 import { fadeUp, staggerContainer } from "./motion";
 import { theme } from "@/lib/theme";
@@ -59,6 +60,7 @@ export function Hero() {
               Join Now
             </Link>
           </motion.div>
+          <TelegramBotFeature variant="pill" />
         </motion.div>
       </motion.div>
       <motion.div
