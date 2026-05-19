@@ -203,16 +203,26 @@ export function formatExpenseLoggedTelegram(
   amount: number,
   snapshot: BudgetInsightSnapshot,
 ): string {
-  let msg = `Expense recorded successfully ✅\n\n<b>Category:</b> ${category}\n<b>Amount:</b> ${formatBirr(amount)}\n`;
+  let msg = `✅ <b>Expense logged</b>
+
+📂 <b>Category:</b> ${category}
+💵 <b>Amount:</b> ${formatBirr(amount)}`;
 
   if (snapshot.dailyBudgetUsedPercent != null) {
-    msg += `\nYou've used <b>${snapshot.dailyBudgetUsedPercent}%</b> of your daily spending guide today (${formatBirr(snapshot.todaySpent)} / ${formatBirr(snapshot.dailyBudgetGuide)}).`;
+    msg += `
+
+📊 <b>Today&apos;s pace</b>
+• Used <b>${snapshot.dailyBudgetUsedPercent}%</b> of your daily guide
+• <code>${formatBirr(snapshot.todaySpent)}</code> / <code>${formatBirr(snapshot.dailyBudgetGuide)}</code>`;
   }
 
   if (snapshot.monthlySavingsGoal > 0 && snapshot.hasBudget) {
     const remaining = Math.max(0, snapshot.monthlyIncome - snapshot.monthSpent);
     if (remaining < snapshot.monthlySavingsGoal) {
-      msg += `\n\n💡 Stay mindful tonight — hitting your monthly savings goal (${formatBirr(snapshot.monthlySavingsGoal)}) will need tighter spending.`;
+      msg += `
+
+💡 <b>Tip</b>
+• Stay mindful — your savings goal is <code>${formatBirr(snapshot.monthlySavingsGoal)}</code> this month`;
     }
   }
 

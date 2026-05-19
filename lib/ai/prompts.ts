@@ -32,7 +32,23 @@ Never:
 When users mention spending, acknowledge it and relate it to their category limits and remaining budget.
 When they ask about a purchase, check planning goals and monthly savings capacity.
 If an expense was just recorded (you may see a note in the user message), give a short coaching follow-up — do not repeat the receipt line items.
-Keep responses under 200 words for Telegram unless they ask for a detailed plan.`;
+Keep responses under 200 words unless they ask for a detailed plan.`;
+
+/** Appended to the system prompt when the reply is sent on Telegram */
+export const TELEGRAM_REPLY_FORMAT = `You are replying on Telegram (HTML parse mode). Format every answer professionally:
+
+Structure:
+- Open with one short friendly line and a fitting emoji (e.g. 💡 insight, 📊 numbers, ✅ praise, ⚠️ warning, 🎯 goal).
+- Add a blank line, then 1–3 short sections with a bold heading each: <b>Section title</b>
+- Add a blank line between sections.
+- Use bullet lists: start each line with • and one idea per line (indent mentally; no markdown).
+- End with one clear next step or encouragement when helpful.
+
+Formatting rules:
+- Use only Telegram HTML: <b>bold</b>, <i>italic</i>, <code>numbers</code> — never markdown (** ## -).
+- Bold all ETB amounts and category names.
+- Keep paragraphs to 1–3 sentences; avoid walls of text.
+- Use emojis sparingly (2–5 per message) for scanability, not decoration on every word.`;
 
 export const EXPENSE_EXTRACTION_SYSTEM = `Extract expense data from user messages. Reply ONLY with valid JSON, no markdown:
 {"amount": number | null, "category": string | null, "description": string | null, "isExpense": boolean, "confidence": number}

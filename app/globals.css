@@ -111,68 +111,135 @@ body.intro-active {
   opacity: 0;
 }
 
-.intro-ring-scene {
+/* Intro brand logo + electric effect */
+.intro-logo-electrify {
   position: relative;
-  width: 7.5rem;
-  height: 7.5rem;
-  flex-shrink: 0;
-  animation: intro-scene-float 2.6s ease-in-out infinite;
-}
-
-.intro-rings-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.intro-rings-outer-spin {
-  transform-origin: 64px 64px;
-  animation: intro-svg-spin-outer 1.35s linear infinite;
-}
-
-.intro-rings-inner-spin {
-  transform-origin: 64px 64px;
-  animation: intro-svg-spin-inner 0.95s linear infinite reverse;
-}
-
-.intro-rings-core {
-  animation: intro-core-pulse 1.2s ease-in-out infinite;
-}
-
-.intro-brand {
-  text-align: center;
-  animation: intro-brand-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
-}
-
-.intro-brand-name {
-  margin: 0;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  font-size: clamp(1.75rem, 5vw, 2.25rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  color: #fafafa;
+  width: min(28rem, 92vw);
+  margin: 0 auto;
+  animation: intro-logo-enter 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    transform 0.62s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.5s ease;
 }
 
-.intro-brand-word {
-  display: inline-block;
-  animation: intro-word-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+@media (min-width: 640px) {
+  .intro-logo-electrify {
+    width: min(32rem, 85vw);
+  }
 }
 
-.intro-brand-word--delay {
-  animation-delay: 0.12s;
-  background: linear-gradient(135deg, #f4f4f5 0%, #a7f3d0 45%, #34d399 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+@media (min-width: 768px) {
+  .intro-logo-electrify {
+    width: min(36rem, 72vw);
+  }
+}
+
+.intro-logo-electrify--exit {
+  transform: scale(0.94);
+  opacity: 0;
+}
+
+.intro-logo-image {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  animation:
+    intro-logo-float 2.8s ease-in-out infinite,
+    intro-electric-flicker 2.2s ease-in-out infinite;
+}
+
+.intro-logo-glow {
+  position: absolute;
+  inset: 8% 5%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(52, 211, 153, 0.55) 0%,
+    rgba(16, 185, 129, 0.2) 45%,
+    transparent 72%
+  );
+  filter: blur(18px);
+  animation: intro-electric-pulse 1.8s ease-in-out infinite;
+}
+
+.intro-logo-arc {
+  position: absolute;
+  inset: -6%;
+  z-index: 1;
+  border-radius: 1.25rem;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(52, 211, 153, 0.15) 40deg,
+    rgba(110, 231, 183, 0.95) 70deg,
+    rgba(52, 211, 153, 0.2) 100deg,
+    transparent 140deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.intro-logo-arc--a {
+  animation: intro-electric-arc-spin 2.4s linear infinite;
+}
+
+.intro-logo-arc--b {
+  inset: -10%;
+  opacity: 0.65;
+  animation: intro-electric-arc-spin 3.2s linear infinite reverse;
+}
+
+.intro-logo-spark {
+  position: absolute;
+  z-index: 3;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  box-shadow:
+    0 0 6px #6ee7b7,
+    0 0 14px #34d399,
+    0 0 22px rgba(16, 185, 129, 0.8);
+  pointer-events: none;
+  animation: intro-spark-flash 2.5s ease-in-out infinite;
+}
+
+.intro-logo-spark--1 {
+  top: 12%;
+  left: 18%;
+  animation-delay: 0s;
+}
+
+.intro-logo-spark--2 {
+  top: 28%;
+  right: 14%;
+  animation-delay: 0.7s;
+}
+
+.intro-logo-spark--3 {
+  bottom: 22%;
+  left: 42%;
+  animation-delay: 1.4s;
 }
 
 .intro-brand-tag {
-  margin: 0.65rem 0 0;
+  margin: 0.25rem 0 0;
+  text-align: center;
   font-size: 0.8125rem;
   font-weight: 400;
   letter-spacing: 0.06em;
@@ -222,7 +289,61 @@ body.intro-active {
   }
 }
 
-@keyframes intro-svg-spin-outer {
+@keyframes intro-logo-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.88) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes intro-logo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes intro-electric-flicker {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.35));
+  }
+  45% {
+    filter: drop-shadow(0 0 22px rgba(52, 211, 153, 0.75))
+      drop-shadow(0 0 36px rgba(16, 185, 129, 0.35));
+  }
+  48% {
+    filter: drop-shadow(0 0 8px rgba(110, 231, 183, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 28px rgba(52, 211, 153, 0.95))
+      drop-shadow(0 0 48px rgba(16, 185, 129, 0.45));
+  }
+  52% {
+    filter: drop-shadow(0 0 14px rgba(52, 211, 153, 0.55));
+  }
+}
+
+@keyframes intro-electric-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes intro-electric-arc-spin {
   from {
     transform: rotate(0deg);
   }
@@ -231,46 +352,19 @@ body.intro-active {
   }
 }
 
-@keyframes intro-svg-spin-inner {
-  from {
-    transform: rotate(0deg) scale(0.92);
-  }
-  to {
-    transform: rotate(360deg) scale(0.92);
-  }
-}
-
-@keyframes intro-core-pulse {
+@keyframes intro-spark-flash {
   0%,
   100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.15);
-    opacity: 0.85;
-  }
-}
-
-@keyframes intro-brand-in {
-  from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: scale(0.5);
   }
-  to {
+  8% {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1.2);
   }
-}
-
-@keyframes intro-word-rise {
-  from {
+  20% {
     opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: scale(0.6);
   }
 }
 
@@ -292,14 +386,13 @@ body.intro-active {
 @media (prefers-reduced-motion: reduce) {
   .intro-overlay,
   .intro-stage,
-  .intro-ring-scene,
-  .intro-rings-outer-spin,
-  .intro-rings-inner-spin,
-  .intro-rings-core,
+  .intro-logo-electrify,
+  .intro-logo-image,
+  .intro-logo-glow,
+  .intro-logo-arc,
+  .intro-logo-spark,
   .intro-ambient,
   .intro-progress-bar,
-  .intro-brand,
-  .intro-brand-word,
   .intro-brand-tag {
     animation: none !important;
     transition: none !important;

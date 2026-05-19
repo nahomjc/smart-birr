@@ -7,6 +7,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { WindowChrome } from "./window-chrome";
 
 const metrics = [
   { label: "Total Spending (Month)", value: "42,800 ETB", change: "+2.5%", up: true },
@@ -17,7 +18,8 @@ const metrics = [
 export function DashboardMockup() {
   return (
     <div className="overflow-hidden rounded-2xl border border-emerald-900/40 bg-[#0f1714] shadow-2xl shadow-black/50 ring-1 ring-emerald-900/20">
-      <div className="flex border-b border-emerald-900/30 bg-[#0a1210]">
+      <WindowChrome title="Smart Birr — Dashboard" />
+      <div className="flex bg-[#0a1210]">
         <div className="hidden w-14 shrink-0 flex-col gap-3 border-r border-emerald-900/30 p-3 sm:flex">
           <LayoutGrid className="h-5 w-5 text-emerald-500" />
           <BarChart3 className="h-5 w-5 text-zinc-600" />

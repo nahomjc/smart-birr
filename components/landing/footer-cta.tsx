@@ -32,7 +32,7 @@ export function FooterCta() {
         <article
           className={`${landingContainer} flex flex-col items-center justify-between gap-6 sm:flex-row`}
         >
-          <Logo light />
+          <Logo size="footer" />
           <p className={`text-sm ${theme.subtext}`}>
             © {new Date().getFullYear()} Smart Birr. Built for Ethiopia.
           </p>

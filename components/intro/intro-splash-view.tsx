@@ -1,10 +1,10 @@
-import { IntroRings } from "./intro-rings";
+import { IntroLogo } from "./intro-logo";
 
 type Props = {
   exiting?: boolean;
 };
 
-/** Shared intro markup — used by SSR bootstrap and client IntroLoader */
+/** Shared intro markup — used by client IntroLoader */
 export function IntroSplashView({ exiting = false }: Props) {
   return (
     <>
@@ -12,17 +12,8 @@ export function IntroSplashView({ exiting = false }: Props) {
       <div className="intro-ambient intro-ambient--secondary" />
 
       <div className={`intro-stage ${exiting ? "intro-stage--exit" : ""}`}>
-        <IntroRings />
-
-        <div className="intro-brand">
-          <p className="intro-brand-name">
-            <span className="intro-brand-word">Smart</span>
-            <span className="intro-brand-word intro-brand-word--delay">
-              Birr
-            </span>
-          </p>
-          <p className="intro-brand-tag">AI financial guide for Ethiopia</p>
-        </div>
+        <IntroLogo exiting={exiting} />
+        <p className="intro-brand-tag">AI financial guide for Ethiopia</p>
       </div>
 
       <div className="intro-progress" aria-hidden>

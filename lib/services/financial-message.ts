@@ -5,6 +5,7 @@ import {
   formatExpenseLoggedTelegram,
   getBudgetInsightSnapshot,
 } from "@/lib/finance/budget-insights";
+import { formatTelegramOutboundMessage } from "@/lib/telegram/format-message";
 import {
   getUserContext,
   logExpense,
@@ -87,6 +88,7 @@ export async function processFinancialMessage(
     userPrompt,
     context || undefined,
     history,
+    { channel },
   );
 
   let reply = aiReply;
@@ -94,8 +96,11 @@ export async function processFinancialMessage(
     reply += `\n\n✅ Logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}`;
   }
 
-  if (channel === "telegram" && telegramExpenseBlock) {
-    reply = `${telegramExpenseBlock}\n\n${aiReply}`;
+  if (channel === "telegram") {
+    const coaching = formatTelegramOutboundMessage(aiReply);
+    reply = telegramExpenseBlock
+      ? `${telegramExpenseBlock}\n\n${coaching}`
+      : coaching;
   }
 
   await saveConversation(userId, message, reply);

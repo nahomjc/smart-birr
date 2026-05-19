@@ -4,6 +4,9 @@ export const theme = {
   sectionAlt: "bg-[#0a1210]",
   header:
     "sticky top-0 z-50 border-b border-emerald-900/30 bg-[#060d0b]/90 backdrop-blur-xl",
+  /** Fixed-height header row — logo scales inside without stretching the bar */
+  headerBar:
+    "flex h-16 shrink-0 items-center justify-between gap-4 sm:h-[4.25rem]",
   card: "rounded-2xl border border-emerald-900/25 bg-[#0f1714]/90 p-6 shadow-lg shadow-black/30",
   cardHover:
     "rounded-2xl border border-emerald-900/25 bg-[#0f1714]/90 p-6 shadow-lg shadow-black/30 transition hover:border-emerald-500/40",
