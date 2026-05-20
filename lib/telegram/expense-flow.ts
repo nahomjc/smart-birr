@@ -58,6 +58,12 @@ export async function handleExpenseCallback(
   callbackData: string,
   sourceMessageId?: number,
 ): Promise<boolean> {
+  console.log("[telegram][expense] callback received", {
+    telegramId,
+    callbackData,
+    sourceMessageId: sourceMessageId ?? null,
+  });
+
   if (callbackData === CALLBACK_EXPENSE_CANCEL) {
     await clearTelegramSession(telegramId);
     await sendTelegramMessage(
@@ -77,7 +83,19 @@ export async function handleExpenseCallback(
   }
 
   const category = parseCategoryCallback(callbackData);
-  if (!category) return false;
+  if (!category) {
+    console.warn("[telegram][expense] callback category parse failed", {
+      telegramId,
+      callbackData,
+    });
+    return false;
+  }
+
+  console.log("[telegram][expense] callback category parsed", {
+    telegramId,
+    callbackData,
+    category,
+  });
 
   if (sourceMessageId) {
     await editTelegramMessageReplyMarkup(chatId, sourceMessageId);
@@ -88,6 +106,11 @@ export async function handleExpenseCallback(
     category,
   });
 
+  console.log("[telegram][expense] moved to expense_amount", {
+    telegramId,
+    category,
+  });
+
   const sent = await sendTelegramMessage(
     chatId,
     `💰 <b>${category}</b>\n\nEnter the amount in <b>ETB</b> (numbers only).\n\nExample: <code>350</code>`,
@@ -95,6 +118,10 @@ export async function handleExpenseCallback(
     EXPENSE_AMOUNT_KEYBOARD,
   );
   if (!sent) {
+    console.error("[telegram][expense] failed to send amount prompt", {
+      telegramId,
+      category,
+    });
     await sendTelegramMessage(
       chatId,
       "⚠️ Could not send the next step. Tap <b>📝 Log expense</b> to try again.",
@@ -102,6 +129,10 @@ export async function handleExpenseCallback(
       MAIN_REPLY_KEYBOARD,
     );
   }
+  console.log("[telegram][expense] amount prompt sent", {
+    telegramId,
+    category,
+  });
   return true;
 }
 

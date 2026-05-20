@@ -29,6 +29,10 @@ export const EXPENSE_DESCRIPTION_KEYBOARD = {
 
 const CATEGORY_CALLBACK_PREFIX = "exp_cat:";
 
+function normalizeCategoryToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
 /** Short index-based callback_data (Telegram limit 64 bytes; avoids encoding issues). */
 export function categoryCallbackData(index: number): string {
   return `${CATEGORY_CALLBACK_PREFIX}${index}`;
@@ -36,7 +40,7 @@ export function categoryCallbackData(index: number): string {
 
 export function parseCategoryCallback(data: string): string | null {
   if (!data.startsWith(CATEGORY_CALLBACK_PREFIX)) return null;
-  const rest = data.slice(CATEGORY_CALLBACK_PREFIX.length);
+  const rest = decodeURIComponent(data.slice(CATEGORY_CALLBACK_PREFIX.length)).trim();
   if (!rest.length) return null;
 
   const idx = Number.parseInt(rest, 10);
@@ -48,7 +52,14 @@ export function parseCategoryCallback(data: string): string | null {
   const legacy = EXPENSE_CATEGORIES.find(
     (c) => c.toLowerCase() === rest.toLowerCase(),
   );
-  return legacy ?? null;
+  if (legacy) return legacy;
+
+  // Accept slug-like payloads too (exp_cat:food, exp_cat:health-care, etc).
+  const normalized = normalizeCategoryToken(rest);
+  const bySlug = EXPENSE_CATEGORIES.find(
+    (c) => normalizeCategoryToken(c) === normalized,
+  );
+  return bySlug ?? null;
 }
 
 export function buildCategoryInlineKeyboard() {
