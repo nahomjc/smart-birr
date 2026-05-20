@@ -155,6 +155,15 @@ export async function setWebhook(url: string) {
   return res.json();
 }
 
+export async function deleteWebhook(dropPendingUpdates = false) {
+  const res = await fetch(`${TELEGRAM_API}${token()}/deleteWebhook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ drop_pending_updates: dropPendingUpdates }),
+  });
+  return res.json();
+}
+
 export const HELP_TEXT = `🪙 <b>Smart Birr</b> — your AI finance coach
 
 <b>Keyboard</b>

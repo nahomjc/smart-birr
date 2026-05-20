@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getWebhookInfo, setWebhook } from "@/lib/telegram/bot";
+import { deleteWebhook, getWebhookInfo, setWebhook } from "@/lib/telegram/bot";
 
 export const dynamic = "force-dynamic";
 
@@ -34,18 +34,30 @@ export async function GET(request: Request) {
   }
 
   const webhookUrl = `${baseUrl.replace(/\/$/, "")}/api/telegram/webhook`;
+  const reset = await deleteWebhook(false);
   const result = await setWebhook(webhookUrl);
   const webhookInfo = await getWebhookInfo();
   const webhookSecretConfigured = !!process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
-  const allowedUpdates =
-    (webhookInfo as { result?: { allowed_updates?: string[] } }).result
-      ?.allowed_updates ?? [];
+  const info = (webhookInfo as {
+    result?: {
+      url?: string;
+      allowed_updates?: string[];
+      pending_update_count?: number;
+      last_error_date?: number;
+      last_error_message?: string;
+    };
+  }).result;
+  const allowedUpdates = info?.allowed_updates ?? [];
 
   return NextResponse.json({
     webhookUrl,
+    reset,
     webhookSecretConfigured,
     result,
     webhookInfo,
+    webhookUrlMatches: info?.url === webhookUrl,
+    pendingUpdateCount: info?.pending_update_count ?? 0,
+    lastErrorMessage: info?.last_error_message ?? null,
     callbackQueryEnabled: allowedUpdates.includes("callback_query"),
     hint: webhookSecretConfigured
       ? "Webhook secret registered with Telegram."
