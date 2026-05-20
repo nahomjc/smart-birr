@@ -25,10 +25,12 @@ export async function POST(request: Request) {
   let pendingChatId: number | undefined;
 
   try {
+    console.log("[telegram][webhook] POST received");
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
     if (secret) {
       const header = request.headers.get("x-telegram-bot-api-secret-token");
       if (header !== secret) {
+        console.warn("[telegram][webhook] secret mismatch");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     } else if (process.env.NODE_ENV === "production") {
@@ -38,9 +40,20 @@ export async function POST(request: Request) {
     }
 
     const update = (await request.json()) as TelegramUpdate;
+    console.log("[telegram][webhook] update keys", {
+      hasMessage: !!update.message,
+      hasCallbackQuery: !!update.callback_query,
+      updateId: update.update_id,
+    });
 
     const callback = update.callback_query;
     if (callback?.data && callback.from) {
+      console.log("[telegram][webhook] callback_query received", {
+        callbackId: callback.id,
+        fromId: callback.from.id,
+        data: callback.data,
+        hasMessage: !!callback.message,
+      });
       const chatId = resolveCallbackChatId(callback);
       pendingCallbackId = callback.id;
       pendingChatId = chatId;
@@ -57,11 +70,17 @@ export async function POST(request: Request) {
 
     const message = update.message;
     if (!message?.text || !message.from) {
+      console.log("[telegram][webhook] ignored non-text update");
       return NextResponse.json({ ok: true });
     }
 
     const chatId = message.chat.id;
     const telegramId = message.from.id;
+    console.log("[telegram][webhook] message received", {
+      chatId,
+      telegramId,
+      text: message.text,
+    });
     await handleTelegramMessage(chatId, telegramId, message.text);
 
     return NextResponse.json({ ok: true });

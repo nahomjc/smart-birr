@@ -47,14 +47,14 @@ export async function startExpenseFlow(
 
   await sendTelegramMessage(
     chatId,
-    `${intro}\n\nIf buttons do not respond, tap/type category name below.`,
+    intro,
     "HTML",
     EXPENSE_CATEGORY_KEYBOARD,
   );
 
   await sendTelegramMessage(
     chatId,
-    "Or use inline buttons:",
+    "Inline category buttons (debug):",
     "HTML",
     buildCategoryInlineKeyboard(),
   );
