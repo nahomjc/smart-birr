@@ -2,6 +2,7 @@ import { formatBirr } from "@/lib/finance/budget-engine";
 import { logExpense } from "@/lib/finance/expense-service";
 import { formatExpenseLoggedTelegram, getBudgetInsightSnapshot } from "@/lib/finance/budget-insights";
 import {
+  EXPENSE_CATEGORY_KEYBOARD,
   buildCategoryInlineKeyboard,
   CALLBACK_EXPENSE_CANCEL,
   CALLBACK_SKIP_DESC,
@@ -9,6 +10,7 @@ import {
   EXPENSE_DESCRIPTION_KEYBOARD,
   MAIN_REPLY_KEYBOARD,
   parseCategoryCallback,
+  parseCategoryText,
   REPLY_CANCEL,
   REPLY_LOG_EXPENSE,
   REPLY_SKIP_DESC,
@@ -45,7 +47,14 @@ export async function startExpenseFlow(
 
   await sendTelegramMessage(
     chatId,
-    intro,
+    `${intro}\n\nIf buttons do not respond, tap/type category name below.`,
+    "HTML",
+    EXPENSE_CATEGORY_KEYBOARD,
+  );
+
+  await sendTelegramMessage(
+    chatId,
+    "Or use inline buttons:",
     "HTML",
     buildCategoryInlineKeyboard(),
   );
@@ -101,38 +110,7 @@ export async function handleExpenseCallback(
     await editTelegramMessageReplyMarkup(chatId, sourceMessageId);
   }
 
-  await upsertTelegramSession(telegramId, userId, "expense_amount", {
-    ...((await getTelegramSession(telegramId))?.data ?? {}),
-    category,
-  });
-
-  console.log("[telegram][expense] moved to expense_amount", {
-    telegramId,
-    category,
-  });
-
-  const sent = await sendTelegramMessage(
-    chatId,
-    `💰 <b>${category}</b>\n\nEnter the amount in <b>ETB</b> (numbers only).\n\nExample: <code>350</code>`,
-    "HTML",
-    EXPENSE_AMOUNT_KEYBOARD,
-  );
-  if (!sent) {
-    console.error("[telegram][expense] failed to send amount prompt", {
-      telegramId,
-      category,
-    });
-    await sendTelegramMessage(
-      chatId,
-      "⚠️ Could not send the next step. Tap <b>📝 Log expense</b> to try again.",
-      "HTML",
-      MAIN_REPLY_KEYBOARD,
-    );
-  }
-  console.log("[telegram][expense] amount prompt sent", {
-    telegramId,
-    category,
-  });
+  await moveToAmountStep(chatId, telegramId, userId, category);
   return true;
 }
 
@@ -163,7 +141,18 @@ export async function handleExpenseTextStep(
   }
 
   if (session.state === "expense_category") {
-    return false;
+    const category = parseCategoryText(trimmed);
+    if (!category) {
+      await sendTelegramMessage(
+        chatId,
+        "Please choose a valid category (e.g. Food, Transport, Rent).",
+        "HTML",
+        EXPENSE_CATEGORY_KEYBOARD,
+      );
+      return true;
+    }
+    await moveToAmountStep(chatId, telegramId, userId, category);
+    return true;
   }
 
   if (session.state === "expense_amount") {
@@ -202,6 +191,46 @@ export async function handleExpenseTextStep(
   }
 
   return false;
+}
+
+async function moveToAmountStep(
+  chatId: number,
+  telegramId: number,
+  userId: string,
+  category: string,
+) {
+  await upsertTelegramSession(telegramId, userId, "expense_amount", {
+    ...((await getTelegramSession(telegramId))?.data ?? {}),
+    category,
+  });
+
+  console.log("[telegram][expense] moved to expense_amount", {
+    telegramId,
+    category,
+  });
+
+  const sent = await sendTelegramMessage(
+    chatId,
+    `💰 <b>${category}</b>\n\nEnter the amount in <b>ETB</b> (numbers only).\n\nExample: <code>350</code>`,
+    "HTML",
+    EXPENSE_AMOUNT_KEYBOARD,
+  );
+  if (!sent) {
+    console.error("[telegram][expense] failed to send amount prompt", {
+      telegramId,
+      category,
+    });
+    await sendTelegramMessage(
+      chatId,
+      "⚠️ Could not send the next step. Tap <b>📝 Log expense</b> to try again.",
+      "HTML",
+      MAIN_REPLY_KEYBOARD,
+    );
+  }
+  console.log("[telegram][expense] amount prompt sent", {
+    telegramId,
+    category,
+  });
 }
 
 async function finishExpense(
