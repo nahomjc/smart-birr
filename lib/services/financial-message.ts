@@ -5,11 +5,8 @@ import {
   MEMORY_TURNS_WEB,
 } from "@/lib/ai/conversation-memory";
 import {
+  AI_ENCOUNTERED_PROBLEM_MESSAGE,
   financialCounselorReply,
-  isOpenRouterCreditsError,
-  isOpenRouterPromptTooLargeError,
-  isOpenRouterRateLimitError,
-  userFacingOpenRouterError,
   type ChatMessage,
 } from "@/lib/ai/openrouter";
 import {
@@ -125,34 +122,21 @@ export function webExpenseLoggedSuffix(expenseLogged: ExpenseLogged | null): str
 function aiUnavailableReply(
   channel: "web" | "telegram",
   expenseLogged: ExpenseLogged | null,
-  error?: unknown,
+  _error?: unknown,
 ): string {
-  let hint = "";
-  if (error && isOpenRouterPromptTooLargeError(error)) {
-    hint =
-      " Your account prompt limit is low — add OpenRouter credits or use 📝 Log expense (no AI).";
-  } else if (error && isOpenRouterCreditsError(error)) {
-    hint = " Add credits at openrouter.ai/settings/credits.";
-  } else if (error && isOpenRouterRateLimitError(error)) {
-    hint = " The AI provider is busy — wait a minute and try again, or use 📝 Log expense.";
-  } else if (error) {
-    const friendly = userFacingOpenRouterError(error);
-    if (friendly && !friendly.includes("temporarily unavailable")) {
-      hint = ` ${friendly}`;
-    }
-  }
+  const problem = AI_ENCOUNTERED_PROBLEM_MESSAGE;
 
   if (channel === "telegram") {
     if (expenseLogged) {
-      return `⚠️ AI coaching is temporarily unavailable.${hint}\n\nYour expense was still saved. Use 📊 Budget or 📈 Report for details.`;
+      return `⚠️ ${problem}\n\nYour expense was still saved. Use 📊 Budget or 📈 Report for details.`;
     }
-    return `⚠️ AI replies are temporarily unavailable.${hint}\n\nUse 📝 Log expense to record spending, or 📈 Report for your summary.`;
+    return `⚠️ ${problem}\n\nUse 📝 Log expense to record spending, or 📈 Report for your summary.`;
   }
 
   if (expenseLogged) {
-    return `AI coaching is temporarily unavailable.${hint} Your expense was still logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}.`;
+    return `${problem} Your expense was still logged: ${expenseLogged.amount.toLocaleString()} ETB — ${expenseLogged.category}.`;
   }
-  return `AI is temporarily unavailable.${hint} Try again later or use the dashboard to log expenses.`;
+  return problem;
 }
 
 export async function processFinancialMessage(

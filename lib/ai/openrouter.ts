@@ -147,34 +147,13 @@ function extractMessageContent(completion: ChatCompletion): string {
   );
 }
 
-/** Maps OpenRouter / upstream errors to short user-facing chat text. */
-export function userFacingOpenRouterError(error: unknown): string {
-  const status = getHttpStatus(error);
-  const msg = extractErrorMessage(error);
+/** Short message shown in chat when OpenRouter fails (details stay in server logs). */
+export const AI_ENCOUNTERED_PROBLEM_MESSAGE =
+  "The AI encountered a problem. Please try again in a moment.";
 
-  if (status === 401 || msg.toLowerCase().includes("invalid api key")) {
-    return "AI is not configured (invalid OpenRouter API key). Ask the site admin to check OPENROUTER_API_KEY.";
-  }
-  if (status === 402 || isOpenRouterCreditsError(error)) {
-    return "AI is temporarily unavailable (OpenRouter credits). Add credits at openrouter.ai/settings/credits, or try again later.";
-  }
-  if (isOpenRouterPromptTooLargeError(error)) {
-    return "AI context is too large for your OpenRouter plan. Try a shorter message or add credits to raise the limit.";
-  }
-  if (status === 403 || msg.toLowerCase().includes("provider returned")) {
-    return "The AI provider rejected this request. Wait a moment and try again, or set OPENROUTER_MODEL=deepseek/deepseek-chat on the server.";
-  }
-  if (status === 429 || isOpenRouterRateLimitError(error)) {
-    return "The AI provider is rate-limited. Wait a minute and try again.";
-  }
-  if (msg.includes("OPENROUTER_API_KEY is not configured")) {
-    return "AI is not configured on the server (missing OPENROUTER_API_KEY).";
-  }
-  if (msg.includes("no message content")) {
-    return "The AI returned an empty reply. Please try again.";
-  }
-
-  return msg || "AI is temporarily unavailable. Please try again.";
+/** Maps OpenRouter / upstream errors to user-facing chat text. */
+export function userFacingOpenRouterError(_error: unknown): string {
+  return AI_ENCOUNTERED_PROBLEM_MESSAGE;
 }
 
 export async function chatCompletion(
