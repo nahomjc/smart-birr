@@ -2,7 +2,8 @@ const TELEGRAM_API = "https://api.telegram.org/bot";
 
 export type TelegramReplyMarkup =
   | { keyboard: { text: string }[][]; resize_keyboard?: boolean; is_persistent?: boolean }
-  | { inline_keyboard: { text: string; callback_data: string }[][] };
+  | { inline_keyboard: { text: string; callback_data: string }[][] }
+  | { remove_keyboard: true };
 
 export type TelegramUpdate = {
   update_id: number;

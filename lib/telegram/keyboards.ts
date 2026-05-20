@@ -27,17 +27,8 @@ export const EXPENSE_DESCRIPTION_KEYBOARD = {
   resize_keyboard: true,
 };
 
-export const EXPENSE_CATEGORY_KEYBOARD = {
-  keyboard: [
-    [{ text: "Food" }, { text: "Transport" }],
-    [{ text: "Rent" }, { text: "Subscriptions" }],
-    [{ text: "Shopping" }, { text: "Utilities" }],
-    [{ text: "Healthcare" }, { text: "Education" }],
-    [{ text: "Entertainment" }, { text: "Other" }],
-    [{ text: REPLY_CANCEL }],
-  ],
-  resize_keyboard: true,
-};
+/** Hides the custom reply keyboard (e.g. after removing category reply buttons). */
+export const REMOVE_REPLY_KEYBOARD = { remove_keyboard: true as const };
 
 const CATEGORY_CALLBACK_PREFIX = "exp_cat:";
 
@@ -72,14 +63,6 @@ export function parseCategoryCallback(data: string): string | null {
     (c) => normalizeCategoryToken(c) === normalized,
   );
   return bySlug ?? null;
-}
-
-export function parseCategoryText(text: string): string | null {
-  const normalized = normalizeCategoryToken(text);
-  const category = EXPENSE_CATEGORIES.find(
-    (c) => normalizeCategoryToken(c) === normalized,
-  );
-  return category ?? null;
 }
 
 export function buildCategoryInlineKeyboard() {

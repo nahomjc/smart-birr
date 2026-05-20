@@ -2,10 +2,14 @@ import { eq } from "drizzle-orm";
 import { requireDb, users } from "@/lib/db";
 import { listPlanningGoals } from "@/lib/data/planning-goals";
 import { getBudgetAllocation } from "@/lib/finance/budget-service";
+import {
+  buildTodaySpendingContextForAI,
+  getBudgetInsightSnapshot,
+} from "@/lib/finance/budget-insights";
 import { formatBirr, spendingSummary } from "@/lib/finance/budget-engine";
 import { getMonthlyExpenses } from "@/lib/finance/expense-service";
 import { getMonthlyIncomeTotal } from "@/lib/finance/income-service";
-import { getCurrentPeriod } from "@/lib/finance/period";
+import { getCurrentPeriod, toDateKey } from "@/lib/finance/period";
 import { getActiveRecurringExpenses } from "@/lib/finance/recurring-service";
 
 function formatPeriodLabel(year: number, month: number) {
@@ -38,7 +42,7 @@ export async function buildFinancialContextForUser(
   const period = getCurrentPeriod();
   const periodLabel = formatPeriodLabel(period.year, period.month);
 
-  const [expenses, allocation, loggedIncome, recurring, planningGoals] =
+  const [expenses, allocation, loggedIncome, recurring, planningGoals, snapshot] =
     await Promise.all([
       getMonthlyExpenses(userId),
       getBudgetAllocation(userId),
@@ -47,9 +51,17 @@ export async function buildFinancialContextForUser(
       listPlanningGoals(userId, {
         status: ["active", "paused", "completed"],
       }),
+      getBudgetInsightSnapshot(userId),
     ]);
 
   const summary = spendingSummary(expenses, allocation);
+  const todayKey = toDateKey(new Date());
+  const todayTransactions = expenses
+    .filter((e) => toDateKey(new Date(e.date)) === todayKey)
+    .map(
+      (e) =>
+        `  ${e.category.name}: ${formatBirr(Number(e.amount))}${e.description ? ` (${e.description})` : ""}`,
+    );
   const budgetIncome = allocation?.monthlyIncome ?? null;
   const remaining =
     budgetIncome != null ? Math.max(0, budgetIncome - summary.total) : null;
@@ -86,6 +98,9 @@ export async function buildFinancialContextForUser(
       sections.push(...limitLines);
     }
   }
+
+  sections.push("");
+  sections.push(...buildTodaySpendingContextForAI(snapshot, todayTransactions));
 
   sections.push("");
   sections.push(`=== Spending this month (${periodLabel}) ===`);
@@ -172,7 +187,7 @@ export async function buildFinancialContextForUser(
 
   sections.push("");
   sections.push(
-    "Use this data for personalized advice. Distinguish monthly budget savings from planning-vision goals. Be specific with ETB amounts when relevant.",
+    "Use this data for personalized advice. Distinguish monthly budget savings from planning-vision goals. Be specific with ETB amounts when relevant. When the user asks about today's spending, answer from the Today section first, then give a clear judgment (on track / caution / over budget) using Coach judgment and category limits.",
   );
 
   return sections.join("\n");

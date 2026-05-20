@@ -1,7 +1,7 @@
 import { getBudgetAllocation } from "./budget-service";
 import { formatBirr, spendingSummary } from "./budget-engine";
 import { getMonthlyExpenses } from "./expense-service";
-import { toDateKey } from "./period";
+import { APP_TIMEZONE, toDateKey } from "./period";
 
 export type ExpenseWithCategory = {
   amount: string;
@@ -145,6 +145,101 @@ export async function getBudgetInsightSnapshot(
     dangerReasons,
     topWeekCategories,
   };
+}
+
+/** Plain-text block for the AI counselor (today + budget judgment). */
+export function buildTodaySpendingContextForAI(
+  snapshot: BudgetInsightSnapshot,
+  todayTransactions: string[],
+): string[] {
+  const todayKey = toDateKey(new Date());
+  const lines: string[] = [];
+
+  lines.push(`=== Today (${todayKey}, timezone: ${APP_TIMEZONE}) ===`);
+  lines.push(`Total spent today: ${formatBirr(snapshot.todaySpent)}`);
+
+  if (snapshot.hasBudget) {
+    lines.push(
+      `Daily spending guide (monthly income ÷ 30): ${formatBirr(snapshot.dailyBudgetGuide)}`,
+    );
+    if (snapshot.dailyBudgetUsedPercent != null) {
+      lines.push(
+        `Today vs daily guide: ${snapshot.dailyBudgetUsedPercent}% of guide used`,
+      );
+    }
+    lines.push(
+      `This week: ${formatBirr(snapshot.weekSpent)} spent (guide ${formatBirr(snapshot.weeklyBudgetGuide)}${snapshot.weeklyBudgetUsedPercent != null ? `, ${snapshot.weeklyBudgetUsedPercent}% used` : ""})`,
+    );
+    lines.push(
+      `Month so far: ${formatBirr(snapshot.monthSpent)} of ${formatBirr(snapshot.monthlyIncome)} planned income`,
+    );
+    if (snapshot.monthlySavingsGoal > 0) {
+      lines.push(`Monthly savings goal: ${formatBirr(snapshot.monthlySavingsGoal)}`);
+    }
+  } else {
+    lines.push("No monthly budget set — user should add income in Settings.");
+  }
+
+  if (Object.keys(snapshot.todayByCategory).length > 0) {
+    lines.push("Today by category:");
+    for (const [cat, amt] of Object.entries(snapshot.todayByCategory).sort(
+      (a, b) => b[1] - a[1],
+    )) {
+      lines.push(`  ${cat}: ${formatBirr(amt)}`);
+    }
+  }
+
+  if (todayTransactions.length > 0) {
+    lines.push("Today's transactions (newest first):");
+    lines.push(...todayTransactions);
+  } else if (snapshot.todaySpent === 0) {
+    lines.push("No expenses logged today yet.");
+  }
+
+  lines.push("Coach judgment (use these facts; do not invent numbers):");
+  if (!snapshot.hasBudget) {
+    lines.push(
+      "  Ask user to set monthly income so you can judge daily/weekly pace.",
+    );
+  } else if (snapshot.todaySpent === 0) {
+    lines.push(
+      "  On track today — nothing spent yet. Encourage staying within the daily guide.",
+    );
+  } else if (snapshot.dangerLevel === "danger") {
+    for (const r of snapshot.dangerReasons) {
+      lines.push(`  - ${r}`);
+    }
+    lines.push(
+      "  Verdict: spending pace is too high. Suggest pausing non-essential buys for 2–3 days.",
+    );
+  } else if (snapshot.dangerLevel === "caution") {
+    for (const r of snapshot.dangerReasons) {
+      lines.push(`  - ${r}`);
+    }
+    lines.push(
+      "  Verdict: be careful — close to or over guide. Suggest smaller spending tomorrow.",
+    );
+  } else if (
+    snapshot.dailyBudgetUsedPercent != null &&
+    snapshot.dailyBudgetUsedPercent >= 70
+  ) {
+    lines.push(
+      `  Verdict: moderate — ${snapshot.dailyBudgetUsedPercent}% of daily guide used. Watch discretionary categories.`,
+    );
+  } else {
+    lines.push(
+      "  Verdict: on track today relative to daily guide and monthly budget.",
+    );
+  }
+
+  if (snapshot.monthWarnings.length > 0) {
+    lines.push("Monthly category alerts:");
+    for (const w of snapshot.monthWarnings) {
+      lines.push(`  - ${w}`);
+    }
+  }
+
+  return lines;
 }
 
 export function formatDailySummaryTelegram(

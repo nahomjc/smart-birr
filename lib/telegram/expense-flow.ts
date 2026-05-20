@@ -2,15 +2,14 @@ import { formatBirr } from "@/lib/finance/budget-engine";
 import { logExpense } from "@/lib/finance/expense-service";
 import { formatExpenseLoggedTelegram, getBudgetInsightSnapshot } from "@/lib/finance/budget-insights";
 import {
-  EXPENSE_CATEGORY_KEYBOARD,
   buildCategoryInlineKeyboard,
   CALLBACK_EXPENSE_CANCEL,
   CALLBACK_SKIP_DESC,
   EXPENSE_AMOUNT_KEYBOARD,
   EXPENSE_DESCRIPTION_KEYBOARD,
   MAIN_REPLY_KEYBOARD,
+  REMOVE_REPLY_KEYBOARD,
   parseCategoryCallback,
-  parseCategoryText,
   REPLY_CANCEL,
   REPLY_LOG_EXPENSE,
   REPLY_SKIP_DESC,
@@ -55,16 +54,10 @@ export async function startExpenseFlow(
     options?.intro ??
     "📝 <b>Log expense</b>\n\nChoose a category (same as the dashboard):";
 
+  await sendTelegramMessage(chatId, intro, "HTML", REMOVE_REPLY_KEYBOARD);
   await sendTelegramMessage(
     chatId,
-    intro,
-    "HTML",
-    EXPENSE_CATEGORY_KEYBOARD,
-  );
-
-  await sendTelegramMessage(
-    chatId,
-    "Or tap a category on this message:",
+    "Tap a category:",
     "HTML",
     buildCategoryInlineKeyboard(),
   );
@@ -151,17 +144,12 @@ export async function handleExpenseTextStep(
   }
 
   if (session.state === "expense_category") {
-    const category = parseCategoryText(trimmed);
-    if (!category) {
-      await sendTelegramMessage(
-        chatId,
-        "Please choose a valid category (e.g. Food, Transport, Rent).",
-        "HTML",
-        EXPENSE_CATEGORY_KEYBOARD,
-      );
-      return true;
-    }
-    await moveToAmountStep(chatId, telegramId, userId, category);
+    await sendTelegramMessage(
+      chatId,
+      "Please tap a category button on the message above.",
+      "HTML",
+      buildCategoryInlineKeyboard(),
+    );
     return true;
   }
 
