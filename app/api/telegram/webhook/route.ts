@@ -11,6 +11,7 @@ import {
 } from "@/lib/telegram/handler";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export function GET() {
   return NextResponse.json({
@@ -47,13 +48,19 @@ export async function POST(request: Request) {
     });
 
     const callback = update.callback_query;
-    if (callback?.data && callback.from) {
+    if (callback?.from) {
       console.log("[telegram][webhook] callback_query received", {
         callbackId: callback.id,
         fromId: callback.from.id,
-        data: callback.data,
+        data: callback.data ?? null,
         hasMessage: !!callback.message,
       });
+
+      if (!callback.data) {
+        await answerCallbackQuery(callback.id, "Invalid button");
+        return NextResponse.json({ ok: true });
+      }
+
       const chatId = resolveCallbackChatId(callback);
       pendingCallbackId = callback.id;
       pendingChatId = chatId;

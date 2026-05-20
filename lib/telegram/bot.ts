@@ -136,13 +136,32 @@ export function resolveCallbackChatId(callback: {
   return callback.message?.chat.id ?? callback.from.id;
 }
 
+/** Public app URL used for webhook registration (must match where Vercel serves the bot). */
+export function resolveWebhookBaseUrl(): string | null {
+  const raw =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+  return raw ? raw.replace(/\/$/, "") : null;
+}
+
+export function buildWebhookUrl(): string | null {
+  const base = resolveWebhookBaseUrl();
+  return base ? `${base}/api/telegram/webhook` : null;
+}
+
+function callbacksAllowed(allowedUpdates: string[] | undefined): boolean {
+  if (!allowedUpdates || allowedUpdates.length === 0) return true;
+  return allowedUpdates.includes("callback_query");
+}
+
 export async function setWebhook(url: string) {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
-  const body: {
-    url: string;
-    allowed_updates: string[];
-    secret_token?: string;
-  } = { url, allowed_updates: ["message", "callback_query"] };
+  const body: Record<string, unknown> = {
+    url,
+    // Empty list = receive all update types (incl. callback_query for inline buttons).
+    allowed_updates: [],
+    drop_pending_updates: true,
+  };
   if (secret) {
     body.secret_token = secret;
   }
@@ -153,6 +172,54 @@ export async function setWebhook(url: string) {
     body: JSON.stringify(body),
   });
   return res.json();
+}
+
+/** Re-register webhook when inline buttons would not deliver callback_query updates. */
+export async function ensureWebhookSupportsCallbacks(options?: {
+  force?: boolean;
+}): Promise<{
+  fixed: boolean;
+  webhookUrl: string | null;
+  reason?: string;
+}> {
+  const webhookUrl = buildWebhookUrl();
+  if (!webhookUrl) {
+    return { fixed: false, webhookUrl: null, reason: "NEXT_PUBLIC_APP_URL not set" };
+  }
+
+  const info = (await getWebhookInfo()) as {
+    result?: { url?: string; allowed_updates?: string[] };
+  };
+  const currentUrl = info.result?.url ?? "";
+  const allowed = info.result?.allowed_updates;
+  const urlOk = currentUrl === webhookUrl;
+  const callbacksOk = callbacksAllowed(allowed);
+
+  if (!options?.force && urlOk && callbacksOk) {
+    return { fixed: false, webhookUrl, reason: "already ok" };
+  }
+
+  console.warn("[telegram] webhook repair", {
+    force: !!options?.force,
+    expected: webhookUrl,
+    current: currentUrl,
+    allowed_updates: allowed ?? [],
+    urlOk,
+    callbacksOk,
+  });
+
+  await deleteWebhook(true);
+  const result = await setWebhook(webhookUrl);
+  const ok = !!(result as { ok?: boolean }).ok;
+  return {
+    fixed: ok,
+    webhookUrl,
+    reason: ok
+      ? options?.force
+        ? "force re-registered"
+        : `re-registered (urlOk=${urlOk}, callbacksOk=${callbacksOk})`
+      : JSON.stringify(result),
+  };
 }
 
 export async function deleteWebhook(dropPendingUpdates = false) {

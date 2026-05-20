@@ -21,7 +21,11 @@ import {
   upsertTelegramSession,
   type TelegramSessionData,
 } from "./session";
-import { editTelegramMessageReplyMarkup, sendTelegramMessage } from "./bot";
+import {
+  ensureWebhookSupportsCallbacks,
+  editTelegramMessageReplyMarkup,
+  sendTelegramMessage,
+} from "./bot";
 
 const PERIOD_LABELS: Record<string, string> = {
   lunch: "lunch",
@@ -37,6 +41,12 @@ export async function startExpenseFlow(
   options?: { period?: TelegramSessionData["period"]; intro?: string },
 ) {
   const period = options?.period ?? "manual";
+
+  const webhookRepair = await ensureWebhookSupportsCallbacks();
+  if (webhookRepair.fixed) {
+    console.log("[telegram][expense] webhook auto-repaired for inline buttons", webhookRepair);
+  }
+
   await upsertTelegramSession(telegramId, userId, "expense_category", {
     period,
   });
@@ -54,7 +64,7 @@ export async function startExpenseFlow(
 
   await sendTelegramMessage(
     chatId,
-    "Inline category buttons (debug):",
+    "Or tap a category on this message:",
     "HTML",
     buildCategoryInlineKeyboard(),
   );

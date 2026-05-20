@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { deleteWebhook, getWebhookInfo, setWebhook } from "@/lib/telegram/bot";
+import {
+  buildWebhookUrl,
+  ensureWebhookSupportsCallbacks,
+  getWebhookInfo,
+} from "@/lib/telegram/bot";
 
 export const dynamic = "force-dynamic";
 
@@ -20,22 +24,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : null);
-
-  if (!baseUrl) {
+  const webhookUrl = buildWebhookUrl();
+  if (!webhookUrl) {
     return NextResponse.json(
       { error: "Set NEXT_PUBLIC_APP_URL or deploy to Vercel" },
       { status: 400 },
     );
   }
 
-  const webhookUrl = `${baseUrl.replace(/\/$/, "")}/api/telegram/webhook`;
-  const reset = await deleteWebhook(false);
-  const result = await setWebhook(webhookUrl);
+  const repair = await ensureWebhookSupportsCallbacks({ force: true });
   const webhookInfo = await getWebhookInfo();
   const webhookSecretConfigured = !!process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
   const info = (webhookInfo as {
@@ -48,23 +45,26 @@ export async function GET(request: Request) {
     };
   }).result;
   const allowedUpdates = info?.allowed_updates ?? [];
+  const callbackQueryEnabled =
+    allowedUpdates.length === 0 || allowedUpdates.includes("callback_query");
 
   return NextResponse.json({
     webhookUrl,
-    reset,
+    repair,
     webhookSecretConfigured,
-    result,
     webhookInfo,
     webhookUrlMatches: info?.url === webhookUrl,
     pendingUpdateCount: info?.pending_update_count ?? 0,
     lastErrorMessage: info?.last_error_message ?? null,
-    callbackQueryEnabled: allowedUpdates.includes("callback_query"),
+    allowedUpdates,
+    callbackQueryEnabled,
     hint: webhookSecretConfigured
       ? "Webhook secret registered with Telegram."
       : "Set TELEGRAM_WEBHOOK_SECRET in production and call setup again.",
-    action:
-      allowedUpdates.length > 0 && !allowedUpdates.includes("callback_query")
-        ? "Re-run this setup URL — inline buttons need callback_query in allowed_updates."
+    action: !callbackQueryEnabled
+      ? "Re-run setup — inline buttons need callback_query (or empty allowed_updates = all types)."
+      : !info?.url
+        ? "Webhook URL is empty — run setup again after deploy."
         : undefined,
   });
 }
