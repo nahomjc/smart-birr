@@ -9,6 +9,7 @@ import {
   isOpenRouterCreditsError,
   isOpenRouterPromptTooLargeError,
   isOpenRouterRateLimitError,
+  userFacingOpenRouterError,
   type ChatMessage,
 } from "@/lib/ai/openrouter";
 import {
@@ -133,6 +134,11 @@ function aiUnavailableReply(
     hint = " Add credits at openrouter.ai/settings/credits.";
   } else if (error && isOpenRouterRateLimitError(error)) {
     hint = " The AI provider is busy — wait a minute and try again, or use 📝 Log expense.";
+  } else if (error) {
+    const friendly = userFacingOpenRouterError(error);
+    if (friendly && !friendly.includes("temporarily unavailable")) {
+      hint = ` ${friendly}`;
+    }
   }
 
   if (channel === "telegram") {

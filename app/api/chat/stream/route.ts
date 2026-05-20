@@ -1,6 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { getSessionUserId } from "@/lib/auth/session";
-import { streamFinancialCounselorReply } from "@/lib/ai/openrouter";
+import {
+  financialCounselorReply,
+  streamFinancialCounselorReply,
+  userFacingOpenRouterError,
+} from "@/lib/ai/openrouter";
 import {
   prepareFinancialMessage,
   webExpenseLoggedSuffix,
@@ -47,13 +51,31 @@ export async function POST(request: Request) {
           );
 
           let fullReply = "";
-          for await (const chunk of streamFinancialCounselorReply(
-            prep.userPrompt,
-            prep.context || undefined,
-            prep.history,
-          )) {
-            fullReply += chunk;
-            controller.enqueue(encoder.encode(chunk));
+          try {
+            for await (const chunk of streamFinancialCounselorReply(
+              prep.userPrompt,
+              prep.context || undefined,
+              prep.history,
+            )) {
+              fullReply += chunk;
+              controller.enqueue(encoder.encode(chunk));
+            }
+          } catch (streamError) {
+            if (!fullReply.trim()) {
+              fullReply = await financialCounselorReply(
+                prep.userPrompt,
+                prep.context || undefined,
+                prep.history,
+                { channel: "web" },
+              );
+              controller.enqueue(encoder.encode(fullReply));
+            } else {
+              throw streamError;
+            }
+          }
+
+          if (!fullReply.trim()) {
+            throw new Error("OpenRouter returned an empty reply");
           }
 
           const suffix = webExpenseLoggedSuffix(prep.expenseLogged);
@@ -69,8 +91,7 @@ export async function POST(request: Request) {
           revalidatePath("/dashboard/budget");
           controller.close();
         } catch (error) {
-          const msg =
-            error instanceof Error ? error.message : "Chat stream failed";
+          const msg = userFacingOpenRouterError(error);
           controller.enqueue(encoder.encode(`\n\n⚠️ ${msg}`));
           controller.close();
         }

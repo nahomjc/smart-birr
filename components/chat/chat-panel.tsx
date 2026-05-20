@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { sendChatMessage } from "@/app/actions/chat";
 import { Button } from "@/components/ui/button";
 import { theme } from "@/lib/theme";
 import { TypingIndicator } from "./typing-indicator";
@@ -74,6 +75,22 @@ export function ChatPanel({ embedded = false, className = "" }: ChatPanelProps) 
     ]);
     scrollToBottom();
 
+    async function finishFromServerAction() {
+      const result = await sendChatMessage(text);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.isStreaming
+            ? {
+                ...m,
+                content: result.reply,
+                expenseLogged: result.expenseLogged ?? m.expenseLogged,
+                isStreaming: false,
+              }
+            : m,
+        ),
+      );
+    }
+
     try {
       const res = await fetch("/api/chat/stream", {
         method: "POST",
@@ -82,8 +99,12 @@ export function ChatPanel({ embedded = false, className = "" }: ChatPanelProps) 
       });
 
       if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || `Request failed (${res.status})`);
+        if (res.status === 401) {
+          const errText = await res.text();
+          throw new Error(errText || "Not signed in");
+        }
+        await finishFromServerAction();
+        return;
       }
 
       const reader = res.body?.getReader();
@@ -137,6 +158,13 @@ export function ChatPanel({ embedded = false, className = "" }: ChatPanelProps) 
         ),
       );
     } catch (e) {
+      try {
+        await finishFromServerAction();
+        return;
+      } catch {
+        /* fall through to error UI */
+      }
+
       const errMsg =
         e instanceof Error
           ? e.message

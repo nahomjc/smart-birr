@@ -116,14 +116,64 @@ function retryMaxTokens(error: unknown, requested: number): number | null {
   return halved >= 64 && halved < requested ? halved : null;
 }
 
+function contentToString(content: unknown): string {
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((part: unknown) => {
+      if (typeof part === "string") return part;
+      if (part && typeof part === "object" && "type" in part) {
+        const block = part as { type?: string; text?: string };
+        if (block.type === "text" && block.text) return String(block.text);
+      }
+      return "";
+    })
+    .join("")
+    .trim();
+}
+
 function extractMessageContent(completion: ChatCompletion): string {
-  const content = completion.choices?.[0]?.message?.content?.trim();
+  const choice = completion.choices?.[0];
+  const content = contentToString(choice?.message?.content);
   if (content) return content;
 
-  const finish = completion.choices?.[0]?.finish_reason;
+  const refusal = choice?.message?.refusal?.trim();
+  if (refusal) return refusal;
+
+  const finish = choice?.finish_reason;
   throw new Error(
     `OpenRouter returned no message content${finish ? ` (finish_reason: ${finish})` : ""}`,
   );
+}
+
+/** Maps OpenRouter / upstream errors to short user-facing chat text. */
+export function userFacingOpenRouterError(error: unknown): string {
+  const status = getHttpStatus(error);
+  const msg = extractErrorMessage(error);
+
+  if (status === 401 || msg.toLowerCase().includes("invalid api key")) {
+    return "AI is not configured (invalid OpenRouter API key). Ask the site admin to check OPENROUTER_API_KEY.";
+  }
+  if (status === 402 || isOpenRouterCreditsError(error)) {
+    return "AI is temporarily unavailable (OpenRouter credits). Add credits at openrouter.ai/settings/credits, or try again later.";
+  }
+  if (isOpenRouterPromptTooLargeError(error)) {
+    return "AI context is too large for your OpenRouter plan. Try a shorter message or add credits to raise the limit.";
+  }
+  if (status === 403 || msg.toLowerCase().includes("provider returned")) {
+    return "The AI provider rejected this request. Wait a moment and try again, or set OPENROUTER_MODEL=deepseek/deepseek-chat on the server.";
+  }
+  if (status === 429 || isOpenRouterRateLimitError(error)) {
+    return "The AI provider is rate-limited. Wait a minute and try again.";
+  }
+  if (msg.includes("OPENROUTER_API_KEY is not configured")) {
+    return "AI is not configured on the server (missing OPENROUTER_API_KEY).";
+  }
+  if (msg.includes("no message content")) {
+    return "The AI returned an empty reply. Please try again.";
+  }
+
+  return msg || "AI is temporarily unavailable. Please try again.";
 }
 
 export async function chatCompletion(
@@ -227,29 +277,100 @@ export async function financialCounselorReply(
   throw lastError;
 }
 
+async function* streamChatCompletion(
+  messages: ChatMessage[],
+  options?: { maxTokens?: number },
+): AsyncGenerator<string> {
+  const client = getClient();
+  const primaryModel = resolveModel();
+  const models =
+    primaryModel === FALLBACK_MODEL
+      ? [primaryModel]
+      : [primaryModel, FALLBACK_MODEL];
+  const initialMax = options?.maxTokens ?? maxTokensForChannel("web");
+
+  let lastError: unknown;
+
+  for (const model of models) {
+    let maxTokens = initialMax;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const stream = await client.chat.completions.create({
+          model,
+          max_tokens: maxTokens,
+          stream: true,
+          messages: messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        });
+
+        for await (const chunk of stream) {
+          const text = chunk.choices?.[0]?.delta?.content;
+          if (text) yield text;
+        }
+        return;
+      } catch (error) {
+        lastError = error;
+
+        const lowerMax = retryMaxTokens(error, maxTokens);
+        if (lowerMax !== null) {
+          maxTokens = lowerMax;
+          continue;
+        }
+
+        if (isOpenRouterRateLimitError(error) && attempt < 2) {
+          await sleep(600 * (attempt + 1));
+          continue;
+        }
+
+        break;
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 /** Streams counselor tokens for web chat (OpenRouter SSE). */
 export async function* streamFinancialCounselorReply(
   userMessage: string,
   contextBlock?: string,
   history: ChatMessage[] = [],
 ): AsyncGenerator<string> {
-  const client = getClient();
-  const stream = await client.chat.completions.create({
-    model: resolveModel(),
-    max_tokens: maxTokensForChannel("web"),
-    stream: true,
-    messages: buildCounselorMessages(userMessage, contextBlock, history, {
-      channel: "web",
-    }).map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
-  });
+  const tiers = COUNSELOR_PROMPT_TIERS.web;
+  const maxTokens = maxTokensForChannel("web");
+  let lastError: unknown;
 
-  for await (const chunk of stream) {
-    const text = chunk.choices?.[0]?.delta?.content;
-    if (text) yield text;
+  for (const tier of tiers) {
+    const messages = buildCounselorMessages(
+      userMessage,
+      truncateContext(contextBlock, tier.contextMaxChars),
+      trimHistory(history, tier.historyTurns, tier.maxCharsPerHistoryMessage),
+      { channel: "web" },
+    );
+
+    try {
+      let yielded = false;
+      for await (const chunk of streamChatCompletion(messages, { maxTokens })) {
+        yielded = true;
+        yield chunk;
+      }
+      if (yielded) return;
+
+      const full = await chatCompletion(messages, { maxTokens });
+      if (full.trim()) {
+        yield full;
+        return;
+      }
+    } catch (error) {
+      lastError = error;
+      if (!isOpenRouterPromptTooLargeError(error)) throw error;
+    }
   }
+
+  throw lastError;
 }
 
 export async function jsonCompletion<T>(
