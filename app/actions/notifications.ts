@@ -3,6 +3,7 @@
 import { requireUserId } from "@/lib/auth/require-user";
 import {
   getUnreadNotificationCount,
+  listAllNotifications,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -49,9 +50,24 @@ export async function loadNotificationsSnapshot(
   return serializeSnapshot(items, unreadCount);
 }
 
+export async function loadNotificationsPage(
+  userId: string,
+): Promise<NotificationsSnapshot> {
+  const [items, unreadCount] = await Promise.all([
+    listAllNotifications(userId),
+    getUnreadNotificationCount(userId),
+  ]);
+  return serializeSnapshot(items, unreadCount);
+}
+
 export async function getNotifications(): Promise<NotificationsSnapshot> {
   const userId = await requireUserId();
   return loadNotificationsSnapshot(userId);
+}
+
+export async function getNotificationsForPage(): Promise<NotificationsSnapshot> {
+  const userId = await requireUserId();
+  return loadNotificationsPage(userId);
 }
 
 export async function markNotificationReadAction(

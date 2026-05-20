@@ -1,6 +1,8 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Bell, ChevronRight } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -16,24 +18,17 @@ import {
   type NotificationItem,
   type NotificationsSnapshot,
 } from "@/app/actions/notifications";
-
-function formatWhen(iso: string) {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+import {
+  formatNotificationWhen,
+  getNotificationTypeMeta,
+} from "@/lib/notifications/display";
 
 type NotificationBellProps = {
   initial: NotificationsSnapshot;
 };
 
 export function NotificationBell({ initial }: NotificationBellProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>(initial.notifications);
   const [unreadCount, setUnreadCount] = useState(initial.unreadCount);
@@ -87,7 +82,7 @@ export function NotificationBell({ initial }: NotificationBellProps) {
     }
 
     const margin = 16;
-    const maxWidth = 352; // 22rem
+    const maxWidth = 352;
 
     function updatePosition() {
       const button = buttonRef.current;
@@ -131,9 +126,13 @@ export function NotificationBell({ initial }: NotificationBellProps) {
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [open]);
 
-  async function markRead(id: string) {
-    const data = await markNotificationReadAction(id);
-    if (data) applyNotifications(data);
+  async function openNotification(n: NotificationItem) {
+    if (!n.readAt) {
+      const data = await markNotificationReadAction(n.id);
+      if (data) applyNotifications(data);
+    }
+    setOpen(false);
+    router.push(`/dashboard/notifications?id=${n.id}`);
   }
 
   async function markAllRead() {
@@ -155,7 +154,13 @@ export function NotificationBell({ initial }: NotificationBellProps) {
         }}
       >
         <div className="flex items-center justify-between border-b border-emerald-900/25 px-4 py-3">
-          <h2 className="text-sm font-semibold text-zinc-100">Notifications</h2>
+          <Link
+            href="/dashboard/notifications"
+            onClick={() => setOpen(false)}
+            className="text-sm font-semibold text-zinc-100 transition hover:text-emerald-300"
+          >
+            Notifications
+          </Link>
           {unreadCount > 0 && (
             <button
               type="button"
@@ -177,39 +182,54 @@ export function NotificationBell({ initial }: NotificationBellProps) {
               No notifications yet
             </li>
           ) : (
-            items.map((n) => (
-              <li key={n.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!n.readAt) void markRead(n.id);
-                  }}
-                  className={`w-full border-b border-emerald-900/15 px-4 py-3 text-left transition hover:bg-emerald-950/30 ${
-                    n.readAt ? "opacity-70" : ""
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-zinc-100">
-                      {n.title}
-                    </p>
-                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-zinc-600">
-                      {n.type}
+            items.map((n) => {
+              const meta = getNotificationTypeMeta(n.type);
+              const Icon = meta.icon;
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => void openNotification(n)}
+                    className={`flex w-full gap-3 border-b border-emerald-900/15 px-4 py-3 text-left transition hover:bg-emerald-950/30 ${
+                      n.readAt ? "opacity-70" : ""
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.iconBg}`}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
                     </span>
-                  </div>
-                  <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">
-                    {n.message}
-                  </p>
-                  <p className="mt-1 text-[10px] text-zinc-600">
-                    {formatWhen(n.createdAt)}
-                    {!n.readAt && (
-                      <span className="ml-2 text-emerald-500">New</span>
-                    )}
-                  </p>
-                </button>
-              </li>
-            ))
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium text-zinc-100">
+                          {n.title}
+                        </p>
+                        {!n.readAt && (
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                        )}
+                      </span>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">
+                        {n.message}
+                      </p>
+                      <p className="mt-1 text-[10px] text-zinc-600">
+                        {formatNotificationWhen(n.createdAt)}
+                      </p>
+                    </span>
+                  </button>
+                </li>
+              );
+            })
           )}
         </ul>
+
+        <Link
+          href="/dashboard/notifications"
+          onClick={() => setOpen(false)}
+          className="flex items-center justify-between border-t border-emerald-900/25 px-4 py-3 text-sm font-medium text-emerald-400 transition hover:bg-emerald-950/30 hover:text-emerald-300"
+        >
+          View all notifications
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Link>
       </div>
     ) : null;
 

@@ -1,16 +1,24 @@
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { requireDb, notifications } from "@/lib/db";
 
-const LIST_LIMIT = 30;
+const BELL_LIST_LIMIT = 12;
+const PAGE_LIST_LIMIT = 100;
 
-export async function listNotifications(userId: string) {
+export async function listNotifications(
+  userId: string,
+  limit = BELL_LIST_LIMIT,
+) {
   const db = requireDb();
   return db
     .select()
     .from(notifications)
     .where(eq(notifications.userId, userId))
     .orderBy(desc(notifications.createdAt))
-    .limit(LIST_LIMIT);
+    .limit(limit);
+}
+
+export async function listAllNotifications(userId: string) {
+  return listNotifications(userId, PAGE_LIST_LIMIT);
 }
 
 export async function getUnreadNotificationCount(userId: string) {
