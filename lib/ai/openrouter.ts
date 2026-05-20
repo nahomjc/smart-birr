@@ -8,6 +8,7 @@ import {
 import {
   FINANCIAL_COUNSELOR_SYSTEM,
   TELEGRAM_REPLY_FORMAT,
+  WEB_REPLY_FORMAT,
 } from "./prompts";
 
 const FALLBACK_MODEL = "deepseek/deepseek-chat";
@@ -235,6 +236,8 @@ function buildCounselorMessages(
   let system = FINANCIAL_COUNSELOR_SYSTEM;
   if (options?.channel === "telegram") {
     system += `\n\n${TELEGRAM_REPLY_FORMAT}`;
+  } else {
+    system += `\n\n${WEB_REPLY_FORMAT}`;
   }
   const systemContent = contextBlock
     ? `${system}\n\n--- User financial context ---\n${contextBlock}`

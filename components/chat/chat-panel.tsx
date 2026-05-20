@@ -2,8 +2,10 @@
 
 import { useState, useRef } from "react";
 import { sendChatMessage } from "@/app/actions/chat";
+import { prepareWebChatHtml } from "@/lib/chat/format-message";
 import { Button } from "@/components/ui/button";
 import { theme } from "@/lib/theme";
+import { ChatMessageContent } from "./chat-message-content";
 import { TypingIndicator } from "./typing-indicator";
 
 type Message = {
@@ -154,7 +156,16 @@ export function ChatPanel({ embedded = false, className = "" }: ChatPanelProps) 
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.isStreaming ? { ...m, isStreaming: false } : m,
+          m.isStreaming
+            ? {
+                ...m,
+                content:
+                  m.role === "assistant"
+                    ? prepareWebChatHtml(m.content)
+                    : m.content,
+                isStreaming: false,
+              }
+            : m,
         ),
       );
     } catch (e) {
@@ -231,8 +242,11 @@ export function ChatPanel({ embedded = false, className = "" }: ChatPanelProps) 
                     : "border border-emerald-900/30 bg-[#141f1b] text-zinc-200"
                 }`}
               >
-                <p className="whitespace-pre-wrap">
-                  {msg.content}
+                <p>
+                  <ChatMessageContent
+                    content={msg.content}
+                    asHtml={msg.role === "assistant"}
+                  />
                   {msg.isStreaming && msg.content ? (
                     <span
                       className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-emerald-400/90 align-text-bottom"

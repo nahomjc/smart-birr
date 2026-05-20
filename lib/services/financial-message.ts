@@ -16,6 +16,7 @@ import {
   formatExpenseLoggedTelegram,
   getBudgetInsightSnapshot,
 } from "@/lib/finance/budget-insights";
+import { prepareWebChatHtml } from "@/lib/chat/format-message";
 import { formatTelegramOutboundMessage } from "@/lib/telegram/format-message";
 import {
   getUserContext,
@@ -191,7 +192,7 @@ export async function processFinancialMessage(
       aiReply = aiUnavailableReply(prep.channel, prep.expenseLogged, error);
     }
 
-    let reply = aiReply;
+    let reply = prep.channel === "web" ? prepareWebChatHtml(aiReply) : aiReply;
     if (prep.channel === "web") {
       reply += webExpenseLoggedSuffix(prep.expenseLogged);
     }

@@ -5,6 +5,7 @@ import {
   streamFinancialCounselorReply,
   userFacingOpenRouterError,
 } from "@/lib/ai/openrouter";
+import { prepareWebChatHtml } from "@/lib/chat/format-message";
 import {
   prepareFinancialMessage,
   webExpenseLoggedSuffix,
@@ -83,6 +84,11 @@ export async function POST(request: Request) {
             fullReply += suffix;
             controller.enqueue(encoder.encode(suffix));
           }
+
+          const bodyOnly = suffix && fullReply.endsWith(suffix)
+            ? fullReply.slice(0, -suffix.length)
+            : fullReply;
+          fullReply = prepareWebChatHtml(bodyOnly) + (suffix ?? "");
 
           await saveConversation(userId, message, fullReply);
           revalidatePath("/dashboard");
