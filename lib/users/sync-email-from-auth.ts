@@ -2,10 +2,10 @@ import { sql } from "drizzle-orm";
 import { requireDb } from "@/lib/db";
 
 /** Copy emails from Supabase auth into app users where missing (for campaigns, etc.). */
-export async function syncUserEmailsFromAuth(): Promise<number> {
+export async function syncUserEmailsFromAuth(): Promise<void> {
   try {
     const db = requireDb();
-    const result = await db.execute(sql`
+    await db.execute(sql`
       UPDATE public.users AS u
       SET email = au.email
       FROM auth.users AS au
@@ -14,8 +14,7 @@ export async function syncUserEmailsFromAuth(): Promise<number> {
         AND length(trim(au.email)) > 0
         AND (u.email IS NULL OR length(trim(u.email)) = 0)
     `);
-    return Number(result.rowCount ?? 0);
   } catch {
-    return 0;
+    // auth.users may be unavailable on some DB roles; campaigns still use existing emails
   }
 }
