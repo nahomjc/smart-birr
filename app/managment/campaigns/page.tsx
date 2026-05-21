@@ -3,7 +3,7 @@ import { CampaignForm } from "@/components/management/campaign-form";
 import { CampaignHistory } from "@/components/management/campaign-history";
 import { isSessionUserAdmin } from "@/lib/auth/admin";
 import {
-  listCampaigns,
+  listCampaignsPaginated,
   listUsersForCampaignPicker,
 } from "@/lib/campaigns/campaign-service";
 import { CAMPAIGN_TEMPLATES } from "@/lib/campaigns/templates";
@@ -11,18 +11,36 @@ import { getBrevoConfig } from "@/lib/email/brevo";
 
 export const dynamic = "force-dynamic";
 
-export default async function ManagementCampaignsPage() {
+export default async function ManagementCampaignsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   if (!(await isSessionUserAdmin())) {
     redirect("/dashboard");
   }
 
-  let history: Awaited<ReturnType<typeof listCampaigns>> = [];
+  const params = await searchParams;
+  const requestedPage = Math.max(
+    1,
+    Number.parseInt(params.page ?? "1", 10) || 1,
+  );
+
+  let history = {
+    items: [] as Awaited<ReturnType<typeof listCampaignsPaginated>>["items"],
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    totalPages: 0,
+  };
   let pickerUsers: Awaited<ReturnType<typeof listUsersForCampaignPicker>> = [];
   try {
-    [history, pickerUsers] = await Promise.all([
-      listCampaigns(),
+    const [paginated, users] = await Promise.all([
+      listCampaignsPaginated(requestedPage),
       listUsersForCampaignPicker(),
     ]);
+    history = paginated;
+    pickerUsers = users;
   } catch {
     /* table may not exist until migration */
   }
@@ -66,7 +84,13 @@ export default async function ManagementCampaignsPage() {
             Recent campaigns
           </h2>
           <div className="mt-5">
-            <CampaignHistory campaigns={history} />
+            <CampaignHistory
+              campaigns={history.items}
+              page={history.page}
+              totalPages={history.totalPages}
+              total={history.total}
+              pageSize={history.pageSize}
+            />
           </div>
         </section>
       </div>

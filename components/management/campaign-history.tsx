@@ -1,6 +1,7 @@
-import type { listCampaigns } from "@/lib/campaigns/campaign-service";
+import type { CampaignListRow } from "@/lib/campaigns/campaign-service";
+import { CampaignHistoryPagination } from "@/components/management/campaign-history-pagination";
 
-type CampaignRow = Awaited<ReturnType<typeof listCampaigns>>[number];
+type CampaignRow = CampaignListRow;
 
 function formatWhen(d: Date) {
   return new Date(d).toLocaleString("en-ET", {
@@ -21,14 +22,29 @@ function audienceLabel(a: string, count: number, recipientIds: string[] | null) 
   return "All users";
 }
 
-export function CampaignHistory({ campaigns }: { campaigns: CampaignRow[] }) {
-  if (!campaigns.length) {
+type Props = {
+  campaigns: CampaignRow[];
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+};
+
+export function CampaignHistory({
+  campaigns,
+  page,
+  totalPages,
+  total,
+  pageSize,
+}: Props) {
+  if (total === 0) {
     return (
       <p className="text-sm text-zinc-500">No campaigns sent yet.</p>
     );
   }
 
   return (
+    <>
     <ul className="divide-y divide-zinc-800/60">
       {campaigns.map((c) => (
         <li key={c.id} className="py-4 first:pt-0 last:pb-0">
@@ -68,5 +84,12 @@ export function CampaignHistory({ campaigns }: { campaigns: CampaignRow[] }) {
         </li>
       ))}
     </ul>
+    <CampaignHistoryPagination
+      page={page}
+      totalPages={totalPages}
+      total={total}
+      pageSize={pageSize}
+    />
+    </>
   );
 }

@@ -1,5 +1,5 @@
-import { desc, eq, inArray } from "drizzle-orm";
-import { requireDb, users, campaigns } from "@/lib/db";
+import { count, desc, eq, inArray } from "drizzle-orm";
+import { requireDb, users, campaigns, type Campaign } from "@/lib/db";
 import { sendCampaignEmail } from "@/lib/email/send-campaign-email";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { syncUserEmailsFromAuth } from "@/lib/users/sync-email-from-auth";
@@ -258,15 +258,55 @@ export async function sendCampaign(
   };
 }
 
-export async function listCampaigns(limit = 20) {
+export const CAMPAIGNS_PAGE_SIZE = 10;
+
+const campaignListWith = {
+  createdBy: {
+    columns: { id: true, name: true, email: true },
+  },
+} as const;
+
+export type CampaignListRow = Campaign & {
+  createdBy: { id: string; name: string | null; email: string | null } | null;
+};
+
+export type PaginatedCampaigns = {
+  items: CampaignListRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export async function listCampaignsPaginated(
+  page = 1,
+  pageSize = CAMPAIGNS_PAGE_SIZE,
+): Promise<PaginatedCampaigns> {
   const db = requireDb();
-  return db.query.campaigns.findMany({
+  const safePageSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
+  const requestedPage = Math.max(1, Math.floor(page));
+
+  const [countRow] = await db
+    .select({ total: count() })
+    .from(campaigns);
+  const total = Number(countRow?.total ?? 0);
+  const totalPages = total === 0 ? 0 : Math.ceil(total / safePageSize);
+  const pageNum =
+    totalPages === 0 ? 1 : Math.min(requestedPage, totalPages);
+  const offset = (pageNum - 1) * safePageSize;
+
+  const items = await db.query.campaigns.findMany({
     orderBy: [desc(campaigns.createdAt)],
-    limit,
-    with: {
-      createdBy: {
-        columns: { id: true, name: true, email: true },
-      },
-    },
+    limit: safePageSize,
+    offset,
+    with: campaignListWith,
   });
+
+  return {
+    items,
+    total,
+    page: pageNum,
+    pageSize: safePageSize,
+    totalPages,
+  };
 }
