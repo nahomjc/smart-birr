@@ -16,8 +16,8 @@ export async function GET() {
     if (!userId) {
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     }
-    const items = await getMonthlyExpenses(userId);
-    return NextResponse.json({ expenses: items });
+    const { expenses } = await getMonthlyExpenses(userId);
+    return NextResponse.json({ expenses });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed" },

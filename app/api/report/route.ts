@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     }
 
-    const monthExpenses = await getMonthlyExpenses(userId);
+    const { expenses: monthExpenses } = await getMonthlyExpenses(userId);
     const budget = await getCurrentBudget(userId);
     const allocation = await getBudgetAllocation(userId);
     const plan = budget

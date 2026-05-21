@@ -3,8 +3,13 @@ import { getBudgetAllocation } from "@/lib/finance/budget-service";
 import { formatBirr, spendingSummary } from "@/lib/finance/budget-engine";
 import { getMonthlyIncomeTotal } from "@/lib/finance/income-service";
 import { getCurrentPeriod } from "@/lib/finance/period";
+import { formatBirr as formatBirrEngine } from "@/lib/finance/budget-engine";
 import { getActiveRecurringExpenses } from "@/lib/finance/recurring-service";
-import { getMonthlyExpenses, getUserById } from "@/lib/users/service";
+import {
+  getMonthlyExpenses,
+  getUserById,
+  type MonthlyExpensesResult,
+} from "@/lib/users/service";
 
 export type CategorySpendRow = {
   name: string;
@@ -26,8 +31,12 @@ export type DashboardOverview = {
   warnings: string[];
   byCategory: Record<string, number>;
   categoryRows: CategorySpendRow[];
-  recentExpenses: Awaited<ReturnType<typeof getMonthlyExpenses>>;
+  recentExpenses: Awaited<
+    ReturnType<typeof getMonthlyExpenses>
+  >["expenses"];
   recurringCount: number;
+  recurringFootnote: string;
+  autoLoggedRecurring: MonthlyExpensesResult["autoLogged"];
 };
 
 function formatPeriodLabel(year: number, month: number) {
@@ -44,10 +53,18 @@ export async function getDashboardOverview(
   const period = getCurrentPeriod();
 
   const user = await getUserById(id);
-  const expenses = await getMonthlyExpenses(id);
+  const { expenses, autoLogged } = await getMonthlyExpenses(id);
   const allocation = await getBudgetAllocation(id);
   const loggedIncome = await getMonthlyIncomeTotal(id);
   const recurring = await getActiveRecurringExpenses(id);
+
+  const nextDue = recurring[0];
+  const recurringFootnote =
+    recurring.length === 0
+      ? "No active schedules"
+      : nextDue
+        ? `Next: ${nextDue.category.name} · ${formatBirrEngine(Number(nextDue.amount))}`
+        : "active schedules";
 
   const summary = spendingSummary(expenses, allocation);
   const budgetIncome = allocation?.monthlyIncome ?? null;
@@ -84,6 +101,8 @@ export async function getDashboardOverview(
     categoryRows,
     recentExpenses: expenses.slice(0, 5),
     recurringCount: recurring.length,
+    recurringFootnote,
+    autoLoggedRecurring: autoLogged,
   };
 }
 

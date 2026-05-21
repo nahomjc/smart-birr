@@ -9,11 +9,14 @@ export const dynamic = "force-dynamic";
 
 export default async function ExpensesPage() {
   const userId = await getSessionUserId();
-  let expenses: Awaited<ReturnType<typeof getMonthlyExpenses>> = [];
+  let expenses: Awaited<
+    ReturnType<typeof getMonthlyExpenses>
+  >["expenses"] = [];
 
   if (userId) {
     try {
-      expenses = await getMonthlyExpenses(userId);
+      const result = await getMonthlyExpenses(userId);
+      expenses = result.expenses;
     } catch {
       /* DB unavailable */
     }

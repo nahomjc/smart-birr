@@ -21,9 +21,17 @@ import { processDueRecurringExpenses } from "../finance/recurring-service";
 
 export { logExpense } from "../finance/expense-service";
 
-export async function getMonthlyExpenses(userId: string) {
-  await processDueRecurringExpenses(userId);
-  return fetchMonthlyExpenses(userId);
+export type MonthlyExpensesResult = {
+  expenses: Awaited<ReturnType<typeof fetchMonthlyExpenses>>;
+  autoLogged: Awaited<ReturnType<typeof processDueRecurringExpenses>>;
+};
+
+export async function getMonthlyExpenses(
+  userId: string,
+): Promise<MonthlyExpensesResult> {
+  const autoLogged = await processDueRecurringExpenses(userId);
+  const expenses = await fetchMonthlyExpenses(userId);
+  return { expenses, autoLogged };
 }
 export {
   upsertBudgetFromIncome,

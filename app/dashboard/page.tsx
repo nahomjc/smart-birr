@@ -118,7 +118,23 @@ export default async function DashboardPage() {
         savingsGoal={data.savingsGoal}
         savingsProgress={savingsProgress}
         recurringCount={data.recurringCount}
+        recurringFootnote={data.recurringFootnote}
       />
+
+      {data.autoLoggedRecurring.length > 0 && (
+        <Card className="border-sky-900/40 bg-sky-950/25">
+          <h2 className="text-sm font-medium text-sky-200">
+            Recurring bills logged today
+          </h2>
+          <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-sky-100/90">
+            {data.autoLoggedRecurring.map((r) => (
+              <li key={r.id}>
+                {r.category}: {formatBirr(r.amount)} (added to expenses)
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {data.warnings.length > 0 && (
         <Card className="border-amber-900/40 bg-amber-950/30">

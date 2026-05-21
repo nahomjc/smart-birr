@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MetricAtmCard } from "./metric-atm-card";
 import { formatBirr } from "@/lib/data/dashboard";
 
@@ -7,6 +8,7 @@ type Props = {
   savingsGoal: number | null;
   savingsProgress: number | null;
   recurringCount: number;
+  recurringFootnote: string;
 };
 
 export function DashboardMetricsCards({
@@ -15,6 +17,7 @@ export function DashboardMetricsCards({
   savingsGoal,
   savingsProgress,
   recurringCount,
+  recurringFootnote,
 }: Props) {
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -41,13 +44,18 @@ export function DashboardMetricsCards({
         }
         trailingLabel="Debit"
       />
-      <MetricAtmCard
-        variant="recurring"
-        label="Recurring bills"
-        value={String(recurringCount)}
-        footnote="active schedules"
-        trailingLabel="Auto"
-      />
+      <Link
+        href="/dashboard/recurring"
+        className="block transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 rounded-[20px]"
+      >
+        <MetricAtmCard
+          variant="recurring"
+          label="Recurring bills"
+          value={String(recurringCount)}
+          footnote={recurringFootnote}
+          trailingLabel="Auto"
+        />
+      </Link>
     </div>
   );
 }

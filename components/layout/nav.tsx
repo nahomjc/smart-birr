@@ -8,6 +8,7 @@ const links = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/chat", label: "AI Counselor" },
   { href: "/dashboard/expenses", label: "Expenses" },
+  { href: "/dashboard/recurring", label: "Recurring" },
   { href: "/dashboard/calendar", label: "Calendar" },
   { href: "/dashboard/budget", label: "Budget" },
   { href: "/dashboard/planning", label: "Planning" },

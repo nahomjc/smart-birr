@@ -230,7 +230,7 @@ async function handleBudgetCommand(
 
 async function handleSavingsCommand(chatId: number, userId: string) {
   const budget = await getCurrentBudget(userId);
-  const monthExpenses = await getMonthlyExpenses(userId);
+  const { expenses: monthExpenses } = await getMonthlyExpenses(userId);
   const totalSpent = monthExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const income = Number(budget?.monthlyIncome ?? 0);
   const savingsTarget = Number(budget?.savingsGoal ?? 0);
@@ -253,7 +253,7 @@ async function handleSavingsCommand(chatId: number, userId: string) {
 }
 
 async function handleReportCommand(chatId: number, userId: string) {
-  const monthExpenses = await getMonthlyExpenses(userId);
+  const { expenses: monthExpenses } = await getMonthlyExpenses(userId);
   if (!monthExpenses.length) {
     await sendTelegramMessage(
       chatId,
