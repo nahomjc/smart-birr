@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { AccountMenu } from "@/components/account/account-menu";
 import { DashboardNav } from "@/components/layout/nav";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { loadNotificationsSnapshot } from "@/app/actions/notifications";
+import { isSessionUserAdmin } from "@/lib/auth/admin";
+import { authAvatarUrl, authDisplayName } from "@/lib/auth/display";
 import { getSessionUserId, getSupabaseUser } from "@/lib/auth/session";
 import { FloatingAiChat } from "@/components/chat/floating-ai-chat";
 import { Logo } from "@/components/landing/logo";
@@ -15,6 +17,7 @@ export default async function DashboardLayout({
 }) {
   const authUser = await getSupabaseUser();
   const userId = await getSessionUserId();
+  const showManagement = await isSessionUserAdmin();
   const notifications = userId
     ? await loadNotificationsSnapshot(userId)
     : { notifications: [], unreadCount: 0 };
@@ -25,19 +28,21 @@ export default async function DashboardLayout({
         <div className={`${theme.dashboardShell} ${theme.headerBar}`}>
           <Logo />
           <div className="flex items-center gap-4 overflow-visible">
-            {authUser?.email && (
-              <span className="hidden text-sm text-zinc-500 sm:inline">
-                {authUser.email}
-              </span>
-            )}
             <Link
               href="/"
-              className="text-sm text-zinc-400 transition hover:text-emerald-400"
+              className="hidden text-sm text-zinc-400 transition hover:text-emerald-400 sm:inline"
             >
               Home
             </Link>
             <NotificationBell initial={notifications} />
-            <SignOutButton />
+            {authUser && (
+              <AccountMenu
+                displayName={authDisplayName(authUser)}
+                email={authUser.email}
+                avatarUrl={authAvatarUrl(authUser)}
+                showManagement={showManagement}
+              />
+            )}
           </div>
         </div>
       </header>

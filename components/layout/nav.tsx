@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { theme } from "@/lib/theme";
 
-const links = [
+const baseLinks = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/chat", label: "AI Counselor" },
   { href: "/dashboard/expenses", label: "Expenses" },
@@ -13,10 +13,11 @@ const links = [
   { href: "/dashboard/budget", label: "Budget" },
   { href: "/dashboard/planning", label: "Planning" },
   { href: "/dashboard/settings", label: "Settings" },
-];
+] as const;
 
 export function DashboardNav() {
   const pathname = usePathname();
+  const links = [...baseLinks];
 
   return (
     <nav className="flex flex-wrap gap-1 border-b border-emerald-900/30 pb-4">

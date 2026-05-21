@@ -10,6 +10,7 @@ import {
   aiConversations,
   planningGoals,
   planningGoalContributions,
+  campaigns,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -20,6 +21,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   conversations: many(aiConversations),
   customCategories: many(categories),
   planningGoals: many(planningGoals),
+  campaignsCreated: many(campaigns),
+}));
+
+export const campaignsRelations = relations(campaigns, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [campaigns.createdByUserId],
+    references: [users.id],
+  }),
 }));
 
 export const planningGoalsRelations = relations(

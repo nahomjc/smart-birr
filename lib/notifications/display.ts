@@ -100,6 +100,12 @@ const TYPE_META: Record<string, NotificationTypeMeta> = {
     accent: "text-emerald-300",
     iconBg: "bg-emerald-500/15 text-emerald-300",
   },
+  campaign: {
+    label: "Announcement",
+    icon: Bell,
+    accent: "text-amber-300",
+    iconBg: "bg-amber-500/15 text-amber-300",
+  },
 };
 
 const DEFAULT_META: NotificationTypeMeta = {

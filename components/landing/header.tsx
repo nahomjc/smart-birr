@@ -1,10 +1,11 @@
 import Link from "next/link";
-import type { User } from "@supabase/supabase-js";
 import { loadNotificationsSnapshot } from "@/app/actions/notifications";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { isSessionUserAdmin } from "@/lib/auth/admin";
+import { authAvatarUrl, authDisplayName } from "@/lib/auth/display";
 import { getSessionUserId, getSupabaseUser } from "@/lib/auth/session";
+import { AccountMenu } from "@/components/account/account-menu";
 import { Logo } from "./logo";
-import { LandingUserMenu } from "./user-menu";
 import { landingContainer } from "./constants";
 import { theme } from "@/lib/theme";
 
@@ -16,28 +17,10 @@ const nav = [
   { label: "Resources", href: "#testimonials" },
 ];
 
-function authDisplayName(user: User) {
-  const meta = user.user_metadata ?? {};
-  return (
-    (meta.full_name as string) ||
-    (meta.name as string) ||
-    user.email?.split("@")[0] ||
-    "User"
-  );
-}
-
-function authAvatarUrl(user: User): string | null {
-  const meta = user.user_metadata ?? {};
-  const url =
-    (meta.avatar_url as string) ||
-    (meta.picture as string) ||
-    null;
-  return url && url.length > 0 ? url : null;
-}
-
 export async function LandingHeader() {
   const authUser = await getSupabaseUser();
   const userId = await getSessionUserId();
+  const showManagement = await isSessionUserAdmin();
   const notifications = userId
     ? await loadNotificationsSnapshot(userId)
     : { notifications: [], unreadCount: 0 };
@@ -61,10 +44,11 @@ export async function LandingHeader() {
         {authUser ? (
           <div className="flex items-center gap-2 overflow-visible sm:gap-3">
             <NotificationBell initial={notifications} />
-            <LandingUserMenu
+            <AccountMenu
               displayName={authDisplayName(authUser)}
               email={authUser.email}
               avatarUrl={authAvatarUrl(authUser)}
+              showManagement={showManagement}
             />
           </div>
         ) : (

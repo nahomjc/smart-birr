@@ -280,6 +280,35 @@ export const passwordResetOtps = pgTable(
   ],
 );
 
+/** Admin broadcast campaigns (in-app + optional email). */
+export const campaigns = pgTable(
+  "campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    audience: text("audience").notNull(),
+    /** Set when audience is `selected` — user ids targeted */
+    recipientIds: jsonb("recipient_ids").$type<string[] | null>(),
+    sendInApp: boolean("send_in_app").default(true).notNull(),
+    sendEmail: boolean("send_email").default(false).notNull(),
+    recipientCount: smallint("recipient_count").notNull(),
+    inAppSent: smallint("in_app_sent").default(0).notNull(),
+    emailSent: smallint("email_sent").default(0).notNull(),
+    emailFailed: smallint("email_failed").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("campaigns_created_at_idx").on(table.createdAt),
+    index("campaigns_created_by_idx").on(table.createdByUserId),
+  ],
+);
+
 export const notifications = pgTable(
   "notifications",
   {
@@ -310,6 +339,7 @@ export type BudgetLimit = typeof budgetLimits.$inferSelect;
 export type IncomeEntry = typeof incomeEntries.$inferSelect;
 export type RecurringExpense = typeof recurringExpenses.$inferSelect;
 export type PasswordResetOtp = typeof passwordResetOtps.$inferSelect;
+export type Campaign = typeof campaigns.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type PlanningGoal = typeof planningGoals.$inferSelect;
 export type PlanningGoalContribution =

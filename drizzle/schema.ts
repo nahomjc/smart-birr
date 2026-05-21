@@ -218,6 +218,45 @@ export const password_reset_otps = pgTable("password_reset_otps", {
 	index("password_reset_otps_email_created_idx").using("btree", table.email.asc().nullsLast().op("text_ops"), table.created_at.desc().nullsFirst().op("text_ops")),
 ]);
 
+export const campaigns = pgTable("campaigns", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	created_by_user_id: uuid(),
+	title: text().notNull(),
+	message: text().notNull(),
+	audience: text().notNull(),
+	send_in_app: boolean().default(true).notNull(),
+	send_email: boolean().default(false).notNull(),
+	recipient_count: smallint().notNull(),
+	in_app_sent: smallint().default(0).notNull(),
+	email_sent: smallint().default(0).notNull(),
+	email_failed: smallint().default(0).notNull(),
+	created_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("campaigns_created_at_idx").using("btree", table.created_at.asc().nullsLast().op("timestamptz_ops")),
+	index("campaigns_created_by_idx").using("btree", table.created_by_user_id.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.created_by_user_id],
+			foreignColumns: [users.id],
+			name: "campaigns_created_by_user_id_fkey"
+		}).onDelete("set null"),
+]);
+
+export const telegram_sessions = pgTable("telegram_sessions", {
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	telegram_id: bigint({ mode: "number" }).primaryKey().notNull(),
+	user_id: uuid().notNull(),
+	state: text().default('idle').notNull(),
+	data: jsonb().default({}),
+	updated_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("telegram_sessions_user_id_idx").using("btree", table.user_id.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.user_id],
+			foreignColumns: [users.id],
+			name: "telegram_sessions_user_id_fkey"
+		}).onDelete("cascade"),
+]);
+
 export const notifications = pgTable("notifications", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	user_id: uuid().notNull(),
@@ -234,21 +273,5 @@ export const notifications = pgTable("notifications", {
 			columns: [table.user_id],
 			foreignColumns: [users.id],
 			name: "notifications_user_id_fkey"
-		}).onDelete("cascade"),
-]);
-
-export const telegram_sessions = pgTable("telegram_sessions", {
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	telegram_id: bigint({ mode: "number" }).primaryKey().notNull(),
-	user_id: uuid().notNull(),
-	state: text().default('idle').notNull(),
-	data: jsonb().default({}),
-	updated_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("telegram_sessions_user_id_idx").using("btree", table.user_id.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.user_id],
-			foreignColumns: [users.id],
-			name: "telegram_sessions_user_id_fkey"
 		}).onDelete("cascade"),
 ]);
