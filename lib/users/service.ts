@@ -72,7 +72,18 @@ export async function getOrCreateUserFromAuth(
   const existing = await db.query.users.findFirst({
     where: eq(users.authUserId, authUser.id),
   });
-  if (existing) return existing;
+  if (existing) {
+    const authEmail = authUser.email?.trim();
+    if (authEmail && !existing.email?.trim()) {
+      const [updated] = await db
+        .update(users)
+        .set({ email: authEmail })
+        .where(eq(users.id, existing.id))
+        .returning();
+      return updated ?? existing;
+    }
+    return existing;
+  }
 
   const meta = authUser.user_metadata ?? {};
   const name =

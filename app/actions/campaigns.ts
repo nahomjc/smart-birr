@@ -52,7 +52,13 @@ export async function runCampaign(
 
   const title = String(formData.get("title") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
-  const audience = parseAudience(String(formData.get("audience") ?? ""));
+  const audienceValues = formData
+    .getAll("audience")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+  const audience = parseAudience(
+    audienceValues[audienceValues.length - 1] ?? "",
+  );
   const sendInApp = formData.get("sendInApp") === "on";
   const sendEmail = formData.get("sendEmail") === "on";
   const selectedUserIds = parseSelectedUserIds(formData);

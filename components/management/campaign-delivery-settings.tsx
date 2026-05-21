@@ -61,7 +61,6 @@ export function CampaignDeliverySettings({
         <div className="grid gap-3 sm:grid-cols-2">
           <ChannelCard
             id="sendInApp"
-            name="sendInApp"
             checked={sendInApp}
             onChange={onSendInAppChange}
             title="In-app notification"
@@ -70,7 +69,6 @@ export function CampaignDeliverySettings({
           />
           <ChannelCard
             id="sendEmail"
-            name="sendEmail"
             checked={sendEmail}
             onChange={onSendEmailChange}
             title="Email"
@@ -99,7 +97,6 @@ export function CampaignDeliverySettings({
             >
               <input
                 type="radio"
-                name="audience"
                 value={opt.value}
                 checked={audience === opt.value}
                 onChange={() => onAudienceChange(opt.value)}
@@ -137,7 +134,6 @@ export function CampaignDeliverySettings({
 
 function ChannelCard({
   id,
-  name,
   checked,
   onChange,
   title,
@@ -145,7 +141,6 @@ function ChannelCard({
   icon,
 }: {
   id: string;
-  name: string;
   checked: boolean;
   onChange: (v: boolean) => void;
   title: string;
@@ -163,7 +158,6 @@ function ChannelCard({
       <input
         type="checkbox"
         id={id}
-        name={name}
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-900 text-emerald-500"

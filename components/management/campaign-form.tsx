@@ -100,6 +100,9 @@ export function CampaignForm({ users, templates }: Props) {
       )}
 
       <form action={action} className="space-y-6">
+      <input type="hidden" name="audience" value={audience} />
+      {sendInApp ? <input type="hidden" name="sendInApp" value="on" /> : null}
+      {sendEmail ? <input type="hidden" name="sendEmail" value="on" /> : null}
       <CampaignComposeTools templates={templates} onApply={applyDraft} />
 
       <CampaignDeliverySettings

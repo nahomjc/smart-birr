@@ -1,7 +1,15 @@
-import { desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import { requireDb, users, campaigns } from "@/lib/db";
 import { sendCampaignEmail } from "@/lib/email/send-campaign-email";
 import { createNotification } from "@/lib/notifications/create-notification";
+import { syncUserEmailsFromAuth } from "@/lib/users/sync-email-from-auth";
+
+const usersWithEmailWhere = sql`length(trim(coalesce(${users.email}, ''))) > 0`;
+
+function normalizeEmail(email: string | null | undefined): string | null {
+  const trimmed = email?.trim();
+  return trimmed ? trimmed : null;
+}
 
 export type CampaignAudience = "all_users" | "with_email" | "selected";
 
@@ -32,6 +40,7 @@ export type SendCampaignResult = {
 export async function listUsersForCampaignPicker(): Promise<
   CampaignPickerUser[]
 > {
+  await syncUserEmailsFromAuth();
   const db = requireDb();
   const rows = await db.query.users.findMany({
     columns: { id: true, name: true, email: true },
@@ -44,16 +53,17 @@ export async function getCampaignAudiencePreview(
   audience: CampaignAudience,
   selectedUserIds?: string[],
 ) {
+  await syncUserEmailsFromAuth();
   const db = requireDb();
   const all = await db.query.users.findMany({
     columns: { id: true, email: true },
   });
-  const withEmail = all.filter((u) => u.email?.trim());
+  const withEmail = all.filter((u) => normalizeEmail(u.email));
 
   if (audience === "selected") {
     const ids = selectedUserIds ?? [];
     const selected = all.filter((u) => ids.includes(u.id));
-    const selectedWithEmail = selected.filter((u) => u.email?.trim());
+    const selectedWithEmail = selected.filter((u) => normalizeEmail(u.email));
     return {
       totalUsers: all.length,
       recipientCount: selected.length,
@@ -93,7 +103,7 @@ async function resolveRecipients(
 
   if (audience === "with_email") {
     return db.query.users.findMany({
-      where: isNotNull(users.email),
+      where: usersWithEmailWhere,
       columns: { id: true, email: true, name: true },
     });
   }
@@ -103,12 +113,61 @@ async function resolveRecipients(
   });
 }
 
+async function sendCampaignEmails(
+  recipients: Array<{ email: string | null; name: string | null }>,
+  title: string,
+  message: string,
+): Promise<{ sent: number; failed: number; firstError?: string }> {
+  const targets = recipients
+    .map((r) => ({
+      email: normalizeEmail(r.email),
+      name: r.name,
+    }))
+    .filter((r): r is { email: string; name: string | null } => !!r.email);
+
+  let sent = 0;
+  let failed = 0;
+  let firstError: string | undefined;
+  const concurrency = 5;
+
+  for (let i = 0; i < targets.length; i += concurrency) {
+    const chunk = targets.slice(i, i + concurrency);
+    const results = await Promise.allSettled(
+      chunk.map((t) =>
+        sendCampaignEmail(t.email, title, message, t.name),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        sent += 1;
+      } else {
+        failed += 1;
+        if (!firstError) {
+          firstError =
+            result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason);
+        }
+      }
+    }
+
+    if (i + concurrency < targets.length) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+
+  return { sent, failed, firstError };
+}
+
 export async function sendCampaign(
   input: SendCampaignInput,
 ): Promise<SendCampaignResult> {
   if (!input.sendInApp && !input.sendEmail) {
     throw new Error("Select at least one channel: in-app or email");
   }
+
+  await syncUserEmailsFromAuth();
 
   if (input.audience === "selected") {
     const count = input.selectedUserIds?.length ?? 0;
@@ -123,6 +182,13 @@ export async function sendCampaign(
   );
   if (!recipients.length) {
     throw new Error("No users match this audience");
+  }
+
+  const emailTargets = recipients.filter((u) => normalizeEmail(u.email));
+  if (input.sendEmail && emailTargets.length === 0) {
+    throw new Error(
+      "No recipients have an email on file. Users must sign in with email or be synced from auth.",
+    );
   }
 
   let inAppSent = 0;
@@ -161,20 +227,23 @@ export async function sendCampaign(
       inAppSent += 1;
     }
 
-    if (input.sendEmail) {
-      const email = user.email?.trim();
-      if (!email) continue;
-      try {
-        await sendCampaignEmail(
-          email,
-          input.title,
-          input.message,
-          user.name,
-        );
-        emailSent += 1;
-      } catch {
-        emailFailed += 1;
-      }
+  }
+
+  if (input.sendEmail) {
+    const emailResult = await sendCampaignEmails(
+      recipients,
+      input.title,
+      input.message,
+    );
+    emailSent = emailResult.sent;
+    emailFailed = emailResult.failed;
+
+    if (emailSent === 0 && emailTargets.length > 0) {
+      throw new Error(
+        emailResult.firstError
+          ? `Email delivery failed: ${emailResult.firstError}`
+          : "Email delivery failed for all recipients. Check Brevo configuration and rate limits.",
+      );
     }
   }
 
