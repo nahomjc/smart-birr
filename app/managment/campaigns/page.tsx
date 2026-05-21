@@ -6,6 +6,7 @@ import {
   listCampaigns,
   listUsersForCampaignPicker,
 } from "@/lib/campaigns/campaign-service";
+import { CAMPAIGN_TEMPLATES } from "@/lib/campaigns/templates";
 import { getBrevoConfig } from "@/lib/email/brevo";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,8 @@ export default async function ManagementCampaignsPage() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-500">
           Send a message to your users as an in-app notification, by email, or
-          both. Emails are sent through Brevo (same as password reset).
+          both. Use ready-made templates or describe a campaign and let AI fill
+          title and message. Emails use Brevo (same as password reset).
         </p>
       </div>
 
@@ -55,7 +57,7 @@ export default async function ManagementCampaignsPage() {
             New campaign
           </h2>
           <div className="mt-5">
-            <CampaignForm users={pickerUsers} />
+            <CampaignForm users={pickerUsers} templates={CAMPAIGN_TEMPLATES} />
           </div>
         </section>
 

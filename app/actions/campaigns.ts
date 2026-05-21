@@ -8,7 +8,7 @@ import {
   sendCampaign,
   type CampaignAudience,
 } from "@/lib/campaigns/campaign-service";
-
+import { generateCampaignFromPrompt } from "@/lib/campaigns/generate-campaign";
 export type CampaignActionState = {
   error?: string;
   success?: boolean;
@@ -112,4 +112,22 @@ export async function loadCampaignPreview(
     return null;
   }
   return getCampaignAudiencePreview(audience, selectedUserIds);
+}
+
+export type GenerateCampaignDraftResult =
+  | { ok: true; title: string; message: string }
+  | { ok: false; error: string };
+
+export async function generateCampaignDraft(
+  prompt: string,
+): Promise<GenerateCampaignDraftResult> {
+  if (!(await isSessionUserAdmin())) {
+    return { ok: false, error: "Admin access required" };
+  }
+
+  const result = await generateCampaignFromPrompt(prompt);
+  if ("error" in result) {
+    return { ok: false, error: result.error };
+  }
+  return { ok: true, title: result.title, message: result.message };
 }

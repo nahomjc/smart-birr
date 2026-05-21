@@ -2,6 +2,8 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CampaignComposeTools } from "@/components/management/campaign-compose-tools";
+import { CampaignDeliverySettings } from "@/components/management/campaign-delivery-settings";
 import { CampaignUserPicker } from "@/components/management/campaign-user-picker";
 import {
   loadCampaignPreview,
@@ -12,6 +14,7 @@ import type {
   CampaignAudience,
   CampaignPickerUser,
 } from "@/lib/campaigns/campaign-service";
+import type { CampaignTemplate } from "@/lib/campaigns/templates";
 import { theme } from "@/lib/theme";
 
 type Preview = {
@@ -22,15 +25,19 @@ type Preview = {
 
 type Props = {
   users: CampaignPickerUser[];
+  templates: CampaignTemplate[];
 };
 
-export function CampaignForm({ users }: Props) {
+export function CampaignForm({ users, templates }: Props) {
   const [state, action, pending] = useActionState<
     CampaignActionState,
     FormData
   >(runCampaign, null);
 
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<CampaignAudience>("all_users");
+  const [sendInApp, setSendInApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -53,131 +60,27 @@ export function CampaignForm({ users }: Props) {
     };
   }, [audience, selectedIdList]);
 
+  function applyDraft(draft: { title: string; message: string }) {
+    setTitle(draft.title);
+    setMessage(draft.message);
+  }
+
+  const recipientHint = preview
+    ? `This send will reach ${preview.recipientCount} user${preview.recipientCount === 1 ? "" : "s"}${
+        sendEmail && preview.withEmailCount < preview.recipientCount
+          ? ` (${preview.withEmailCount} can receive email)`
+          : ""
+      }${audience === "selected" && selectedIds.size === 0 ? " — pick at least one user below" : ""}.`
+    : undefined;
+
   const canSubmit =
-    audience !== "selected" || selectedIds.size > 0;
+    (sendInApp || sendEmail) &&
+    (audience !== "selected" || selectedIds.size > 0) &&
+    title.trim().length >= 2 &&
+    message.trim().length >= 5;
 
   return (
-    <form
-      key={state?.success ? `done-${Date.now()}` : "new"}
-      action={action}
-      className="space-y-5"
-    >
-      <label className="block text-sm">
-        <span className={`mb-1 block ${theme.subtext}`}>Campaign title</span>
-        <input
-          name="title"
-          required
-          minLength={2}
-          maxLength={120}
-          placeholder="e.g. New budget tips for May"
-          className={theme.input}
-        />
-        <span className="mt-1 block text-xs text-zinc-600">
-          Used as notification title and email subject
-        </span>
-      </label>
-
-      <label className="block text-sm">
-        <span className={`mb-1 block ${theme.subtext}`}>Message</span>
-        <textarea
-          name="message"
-          required
-          minLength={5}
-          rows={5}
-          placeholder="Write the message users will see…"
-          className={`${theme.input} resize-y min-h-[120px]`}
-        />
-      </label>
-
-      <fieldset className="space-y-3">
-        <legend className={`text-sm font-medium ${theme.subtext}`}>
-          Channels
-        </legend>
-        <label className="flex items-center gap-3 text-sm text-zinc-300">
-          <input
-            type="checkbox"
-            name="sendInApp"
-            defaultChecked
-            className="h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-amber-500"
-          />
-          In-app notification (bell icon)
-        </label>
-        <label className="flex items-center gap-3 text-sm text-zinc-300">
-          <input
-            type="checkbox"
-            name="sendEmail"
-            checked={sendEmail}
-            onChange={(e) => setSendEmail(e.target.checked)}
-            className="h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-amber-500"
-          />
-          Email (Brevo — users must have an email on file)
-        </label>
-      </fieldset>
-
-      <fieldset className="space-y-3">
-        <legend className={`text-sm font-medium ${theme.subtext}`}>
-          Audience
-        </legend>
-        <label className="flex items-center gap-3 text-sm text-zinc-300">
-          <input
-            type="radio"
-            name="audience"
-            value="all_users"
-            checked={audience === "all_users"}
-            onChange={() => setAudience("all_users")}
-            className="h-4 w-4 border-zinc-600 bg-zinc-900 text-amber-500"
-          />
-          All users
-        </label>
-        <label className="flex items-center gap-3 text-sm text-zinc-300">
-          <input
-            type="radio"
-            name="audience"
-            value="with_email"
-            checked={audience === "with_email"}
-            onChange={() => setAudience("with_email")}
-            className="h-4 w-4 border-zinc-600 bg-zinc-900 text-amber-500"
-          />
-          Only users with email
-        </label>
-        <label className="flex items-center gap-3 text-sm text-zinc-300">
-          <input
-            type="radio"
-            name="audience"
-            value="selected"
-            checked={audience === "selected"}
-            onChange={() => setAudience("selected")}
-            className="h-4 w-4 border-zinc-600 bg-zinc-900 text-amber-500"
-          />
-          Select individual users
-        </label>
-      </fieldset>
-
-      {audience === "selected" && (
-        <CampaignUserPicker
-          users={users}
-          selectedIds={selectedIds}
-          onChange={setSelectedIds}
-        />
-      )}
-
-      {preview && (
-        <p className="text-xs text-zinc-500">
-          Will reach{" "}
-          <strong className="text-zinc-300">{preview.recipientCount}</strong>{" "}
-          user{preview.recipientCount === 1 ? "" : "s"}
-          {sendEmail && preview.withEmailCount < preview.recipientCount && (
-            <>
-              {" "}
-              ({preview.withEmailCount} can receive email)
-            </>
-          )}
-          {audience === "selected" && selectedIds.size === 0 && (
-            <span className="text-amber-400/90"> — select at least one user</span>
-          )}
-        </p>
-      )}
-
+    <div className="space-y-6">
       {state?.error && (
         <p className="text-sm text-red-400">{state.error}</p>
       )}
@@ -196,13 +99,82 @@ export function CampaignForm({ users }: Props) {
         </div>
       )}
 
+      <form action={action} className="space-y-6">
+      <CampaignComposeTools templates={templates} onApply={applyDraft} />
+
+      <CampaignDeliverySettings
+        audience={audience}
+        onAudienceChange={setAudience}
+        sendInApp={sendInApp}
+        onSendInAppChange={setSendInApp}
+        sendEmail={sendEmail}
+        onSendEmailChange={setSendEmail}
+        recipientHint={recipientHint}
+      />
+
+      {audience === "selected" && (
+        <CampaignUserPicker
+          users={users}
+          selectedIds={selectedIds}
+          onChange={setSelectedIds}
+        />
+      )}
+
+      <section className="space-y-4 rounded-xl border border-zinc-800/70 bg-[#0c1014]/90 p-5">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Message content
+          </h3>
+          <p className="mt-1 text-xs text-zinc-600">
+            Title and body sent to users. Use templates or AI above, then edit
+            here.
+          </p>
+        </div>
+
+        <label className="block text-sm">
+          <span className="mb-1.5 block font-medium text-zinc-300">
+            Campaign title
+          </span>
+          <input
+            name="title"
+            required
+            minLength={2}
+            maxLength={120}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Start the new year with a savings plan"
+            className={theme.input}
+          />
+          <span className="mt-1 block text-xs text-zinc-600">
+            Notification title and email subject line
+          </span>
+        </label>
+
+        <label className="block text-sm">
+          <span className="mb-1.5 block font-medium text-zinc-300">
+            Message
+          </span>
+          <textarea
+            name="message"
+            required
+            minLength={5}
+            rows={6}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Write the message users will see…"
+            className={[theme.input, "resize-y min-h-[140px]"].join(" ")}
+          />
+        </label>
+      </section>
+
       <Button
         type="submit"
         disabled={pending || !canSubmit}
-        className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50"
+        className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 sm:w-auto"
       >
         {pending ? "Sending…" : "Send campaign"}
       </Button>
     </form>
+    </div>
   );
 }

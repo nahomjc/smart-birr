@@ -358,7 +358,7 @@ export async function* streamFinancialCounselorReply(
 export async function jsonCompletion<T>(
   systemPrompt: string,
   userMessage: string,
-  options?: { model?: string },
+  options?: { model?: string; maxTokens?: number },
 ): Promise<T | null> {
   try {
     const raw = await chatCompletion(
@@ -368,7 +368,7 @@ export async function jsonCompletion<T>(
       ],
       {
         model: options?.model ?? EXTRACTION_MODEL,
-        maxTokens: 256,
+        maxTokens: options?.maxTokens ?? 256,
       },
     );
     const cleaned = raw.replace(/^```json?\s*/i, "").replace(/```\s*$/i, "");
