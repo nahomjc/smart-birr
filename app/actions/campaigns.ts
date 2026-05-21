@@ -9,6 +9,7 @@ import {
   type CampaignAudience,
 } from "@/lib/campaigns/campaign-service";
 import { generateCampaignFromPrompt } from "@/lib/campaigns/generate-campaign";
+
 export type CampaignActionState = {
   error?: string;
   success?: boolean;

@@ -1,10 +1,8 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { requireDb, users, campaigns } from "@/lib/db";
 import { sendCampaignEmail } from "@/lib/email/send-campaign-email";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { syncUserEmailsFromAuth } from "@/lib/users/sync-email-from-auth";
-
-const usersWithEmailWhere = sql`length(trim(coalesce(${users.email}, ''))) > 0`;
 
 function normalizeEmail(email: string | null | undefined): string | null {
   const trimmed = email?.trim();
@@ -102,10 +100,10 @@ async function resolveRecipients(
   }
 
   if (audience === "with_email") {
-    return db.query.users.findMany({
-      where: usersWithEmailWhere,
+    const all = await db.query.users.findMany({
       columns: { id: true, email: true, name: true },
     });
+    return all.filter((u) => normalizeEmail(u.email));
   }
 
   return db.query.users.findMany({
@@ -226,7 +224,6 @@ export async function sendCampaign(
       });
       inAppSent += 1;
     }
-
   }
 
   if (input.sendEmail) {

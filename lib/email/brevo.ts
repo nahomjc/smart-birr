@@ -18,9 +18,6 @@ export async function sendBrevoEmail(params: {
 
   if (!apiKey) {
     if (process.env.NODE_ENV === "development") {
-      console.info(
-        `[dev] Email to ${params.toEmail} — ${params.subject}\n${params.htmlContent.replace(/<[^>]+>/g, " ").slice(0, 200)}…`,
-      );
       return;
     }
     throw new Error(
